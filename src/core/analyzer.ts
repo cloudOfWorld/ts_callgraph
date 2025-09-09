@@ -13,7 +13,13 @@ import {
 import { Utils } from '../utils';
 
 /**
- * TypeScript AST 分析器核心类
+ * TypeScript/JavaScript AST 分析器核心类
+ * 结合三个项目的思想：
+ * - TS-Call-Graph: 类级别的详细分析
+ * - TypeScript-Call-Graph: 函数调用关系分析
+ * - Jelly: 学术级静态分析精度
+ * 
+ * 支持文件类型：.ts, .tsx, .js, .jsx, .mjs, .cjs
  */
 export class TypeScriptAnalyzer {
   private program!: ts.Program;
@@ -35,17 +41,22 @@ export class TypeScriptAnalyzer {
    * 初始化TypeScript程序和类型检查器
    */
   private initialize(): void {
-    // 创建TypeScript编译选项
+    // 创建TypeScript编译选项，支持JavaScript和TypeScript
     const compilerOptions: ts.CompilerOptions = {
       target: ts.ScriptTarget.ES2020,
       module: ts.ModuleKind.CommonJS,
       moduleResolution: ts.ModuleResolutionKind.NodeJs,
-      allowJs: true,
-      declaration: true,
+      allowJs: true,           // 启用JavaScript支持
+      checkJs: false,          // 不检查JavaScript语法错误，只做AST分析
+      declaration: false,      // JavaScript文件不生成声明文件
       esModuleInterop: true,
       skipLibCheck: true,
       forceConsistentCasingInFileNames: true,
-      strict: false, // 为了兼容性，不要求严格模式
+      strict: false,           // 宽松模式，兼容JavaScript
+      noEmit: true,           // 只做分析，不生成文件
+      jsx: ts.JsxEmit.Preserve, // 支持JSX
+      resolveJsonModule: true,  // 支持JSON模块导入
+      allowSyntheticDefaultImports: true, // 支持默认导入
     };
 
     // 查找项目中的TypeScript配置文件
@@ -75,15 +86,18 @@ export class TypeScriptAnalyzer {
     const excludePatterns = this.options.excludePatterns || ['node_modules/**', '**/*.d.ts'];
     const files = await Utils.findFiles(patterns, excludePatterns);
     
-    const tsFiles = files.filter(file => Utils.isTypeScriptFile(file));
+    // 过滤支持的文件类型（TypeScript和JavaScript）
+    const supportedFiles = files.filter(file => 
+      Utils.isTypeScriptFile(file) || Utils.isJavaScriptFile(file)
+    );
 
     // 创建新的程序实例，包含所有找到的文件
     const compilerOptions = this.program.getCompilerOptions();
-    this.program = ts.createProgram(tsFiles, compilerOptions);
+    this.program = ts.createProgram(supportedFiles, compilerOptions);
     this.typeChecker = this.program.getTypeChecker();
 
     // 分析每个文件
-    for (const filePath of tsFiles) {
+    for (const filePath of supportedFiles) {
       if (!this.processedFiles.has(filePath)) {
         await this.analyzeFile(filePath);
       }
@@ -138,14 +152,34 @@ export class TypeScriptAnalyzer {
 
   /**
    * 递归访问AST节点
+   * 支持TypeScript和JavaScript的不同语言特性
    */
   private visitNode(node: ts.Node, sourceFile: ts.SourceFile): void {
+    // 检测文件类型
+    const isJavaScript = Utils.isJavaScriptFile(sourceFile.fileName);
+    const isTypeScript = Utils.isTypeScriptFile(sourceFile.fileName);
+
     switch (node.kind) {
       case ts.SyntaxKind.ClassDeclaration:
         this.analyzeClass(node as ts.ClassDeclaration, sourceFile);
         break;
       case ts.SyntaxKind.InterfaceDeclaration:
-        this.analyzeInterface(node as ts.InterfaceDeclaration, sourceFile);
+        // 接口只在TypeScript中存在
+        if (isTypeScript) {
+          this.analyzeInterface(node as ts.InterfaceDeclaration, sourceFile);
+        }
+        break;
+      case ts.SyntaxKind.TypeAliasDeclaration:
+        // 类型别名只在TypeScript中存在
+        if (isTypeScript) {
+          this.analyzeTypeAlias(node as ts.TypeAliasDeclaration, sourceFile);
+        }
+        break;
+      case ts.SyntaxKind.EnumDeclaration:
+        // 枚举只在TypeScript中存在
+        if (isTypeScript) {
+          this.analyzeEnum(node as ts.EnumDeclaration, sourceFile);
+        }
         break;
       case ts.SyntaxKind.FunctionDeclaration:
         this.analyzeFunction(node as ts.FunctionDeclaration, sourceFile);
@@ -169,6 +203,18 @@ export class TypeScriptAnalyzer {
         if (!ts.isCallExpression(node.parent)) {
           this.analyzePropertyAccess(node as ts.PropertyAccessExpression, sourceFile);
         }
+        break;
+      // JavaScript特有的模式识别
+      case ts.SyntaxKind.ObjectLiteralExpression:
+        this.analyzeObjectLiteral(node as ts.ObjectLiteralExpression, sourceFile);
+        break;
+      case ts.SyntaxKind.FunctionExpression:
+      case ts.SyntaxKind.ArrowFunction:
+        this.analyzeFunctionExpression(node as ts.FunctionExpression | ts.ArrowFunction, sourceFile);
+        break;
+      // 支持CommonJS模块语法
+      case ts.SyntaxKind.BinaryExpression:
+        this.analyzeAssignment(node as ts.BinaryExpression, sourceFile);
         break;
     }
 
@@ -1010,5 +1056,230 @@ export class TypeScriptAnalyzer {
     }
     
     return undefined;
+  }
+
+  /**
+   * 分析TypeScript类型别名
+   */
+  private analyzeTypeAlias(node: ts.TypeAliasDeclaration, sourceFile: ts.SourceFile): void {
+    const name = node.name.text;
+    const location = Utils.getLocation(node, sourceFile);
+    const id = Utils.generateId(name, location);
+
+    this.symbols.push({
+      type: 'type',
+      id,
+      name,
+      location,
+      isExported: Utils.isExported(node),
+      documentation: Utils.getDocumentation(node),
+      typeDefinition: node.type.getText(sourceFile)
+    } as any);
+  }
+
+  /**
+   * 分析TypeScript枚举
+   */
+  private analyzeEnum(node: ts.EnumDeclaration, sourceFile: ts.SourceFile): void {
+    const name = node.name.text;
+    const location = Utils.getLocation(node, sourceFile);
+    const id = Utils.generateId(name, location);
+
+    const members = node.members.map(member => ({
+      name: member.name.getText(sourceFile),
+      value: member.initializer?.getText(sourceFile)
+    }));
+
+    this.symbols.push({
+      type: 'enum',
+      id,
+      name,
+      location,
+      isExported: Utils.isExported(node),
+      documentation: Utils.getDocumentation(node),
+      members
+    } as any);
+  }
+
+  /**
+   * 分析JavaScript对象字面量（可能是类似类的结构）
+   */
+  private analyzeObjectLiteral(node: ts.ObjectLiteralExpression, sourceFile: ts.SourceFile): void {
+    // 检查是否是赋值给变量的对象字面量
+    const parent = node.parent;
+    if (ts.isVariableDeclaration(parent) && ts.isIdentifier(parent.name)) {
+      const objectName = parent.name.text;
+      const location = Utils.getLocation(node, sourceFile);
+      const id = Utils.generateId(objectName, location);
+
+      const properties: any[] = [];
+      const methods: any[] = [];
+
+      for (const property of node.properties) {
+        if (ts.isPropertyAssignment(property) && ts.isIdentifier(property.name)) {
+          const propName = property.name.text;
+          const propLocation = Utils.getLocation(property, sourceFile);
+          const propId = Utils.generateId(propName, propLocation);
+
+          if (ts.isFunctionExpression(property.initializer) || ts.isArrowFunction(property.initializer)) {
+            // 方法
+            methods.push({
+              type: 'method',
+              id: propId,
+              name: propName,
+              location: propLocation,
+              parameters: this.extractParameters(property.initializer, sourceFile),
+              isAsync: this.isAsyncFunction(property.initializer)
+            });
+          } else {
+            // 属性
+            properties.push({
+              type: 'property',
+              id: propId,
+              name: propName,
+              location: propLocation,
+              propertyType: 'unknown'
+            });
+          }
+        } else if (ts.isMethodDeclaration(property) && ts.isIdentifier(property.name)) {
+          const methodName = property.name.text;
+          const methodLocation = Utils.getLocation(property, sourceFile);
+          const methodId = Utils.generateId(methodName, methodLocation);
+
+          methods.push({
+            type: 'method',
+            id: methodId,
+            name: methodName,
+            location: methodLocation,
+            parameters: this.extractParameters(property, sourceFile),
+            isAsync: this.isAsyncFunction(property)
+          });
+        }
+      }
+
+      // 将对象字面量作为类似类的结构记录
+      this.symbols.push({
+        type: 'object',
+        id,
+        name: objectName,
+        location,
+        properties,
+        methods
+      } as any);
+    }
+  }
+
+  /**
+   * 分析函数表达式和箭头函数
+   */
+  private analyzeFunctionExpression(node: ts.FunctionExpression | ts.ArrowFunction, sourceFile: ts.SourceFile): void {
+    // 检查是否是赋值给变量的函数
+    const parent = node.parent;
+    if (ts.isVariableDeclaration(parent) && ts.isIdentifier(parent.name)) {
+      const functionName = parent.name.text;
+      const location = Utils.getLocation(node, sourceFile);
+      const id = Utils.generateId(functionName, location);
+
+      this.symbols.push({
+        type: 'function',
+        id,
+        name: functionName,
+        location,
+        parameters: this.extractParameters(node, sourceFile),
+        isAsync: this.isAsyncFunction(node),
+        isExported: this.isExportedVariable(parent)
+      } as any);
+    }
+  }
+
+  /**
+   * 分析赋值表达式（CommonJS exports等）
+   */
+  private analyzeAssignment(node: ts.BinaryExpression, sourceFile: ts.SourceFile): void {
+    if (node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+      const left = node.left;
+      const right = node.right;
+
+      // 检查 module.exports 或 exports.xxx 模式
+      if (ts.isPropertyAccessExpression(left)) {
+        const object = left.expression;
+        const property = left.name.text;
+
+        if (ts.isIdentifier(object)) {
+          const objectName = object.text;
+          
+          // module.exports = xxx
+          if (objectName === 'module' && property === 'exports') {
+            this.analyzeModuleExports(right, sourceFile);
+          }
+          // exports.xxx = yyy
+          else if (objectName === 'exports') {
+            this.analyzeExportsProperty(property, right, sourceFile);
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * 分析module.exports赋值
+   */
+  private analyzeModuleExports(node: ts.Node, sourceFile: ts.SourceFile): void {
+    const location = Utils.getLocation(node, sourceFile);
+    
+    this.exportRelations.push({
+      exporter: sourceFile.fileName,
+      exported: sourceFile.fileName,
+      exportType: 'commonjs',
+      location
+    });
+  }
+
+  /**
+   * 分析exports.xxx赋值
+   */
+  private analyzeExportsProperty(propertyName: string, node: ts.Node, sourceFile: ts.SourceFile): void {
+    const location = Utils.getLocation(node, sourceFile);
+    
+    this.exportRelations.push({
+      exporter: sourceFile.fileName,
+      exported: sourceFile.fileName,
+      exportType: 'commonjs',
+      exportName: propertyName,
+      location
+    });
+  }
+
+  /**
+   * 提取函数参数信息
+   */
+  private extractParameters(node: ts.FunctionLikeDeclaration, sourceFile: ts.SourceFile): any[] {
+    return node.parameters.map(param => ({
+      name: param.name.getText(sourceFile),
+      type: Utils.getTypeString(this.typeChecker, param) || 'unknown',
+      isOptional: !!param.questionToken,
+      isRest: !!param.dotDotDotToken
+    }));
+  }
+
+  /**
+   * 检查是否为异步函数
+   */
+  private isAsyncFunction(node: ts.Node): boolean {
+    return !!(ts.getCombinedModifierFlags(node as ts.FunctionLikeDeclaration) & ts.ModifierFlags.Async);
+  }
+
+  /**
+   * 检查变量是否被导出
+   */
+  private isExportedVariable(node: ts.VariableDeclaration): boolean {
+    const parent = node.parent;
+    if (ts.isVariableDeclarationList(parent)) {
+      const grandParent = parent.parent;
+      if (ts.isVariableStatement(grandParent)) {
+        return Utils.isExported(grandParent);
+      }
+    }
+    return false;
   }
 }

@@ -20,6 +20,11 @@ export interface BaseSymbol {
   visibility?: 'public' | 'private' | 'protected';
   isExported?: boolean;
   documentation?: string;
+  metadata?: {
+    jsPatterns?: string[];      // JavaScript特有模式
+    moduleSystem?: 'commonjs' | 'esm' | 'umd' | 'unknown';
+    [key: string]: any;
+  };
 }
 
 export interface ClassSymbol extends BaseSymbol {
@@ -100,6 +105,13 @@ export interface CallRelation {
   callee: CallRelationParticipant;
   callType: 'method' | 'function' | 'constructor' | 'property';
   location: Location;
+  metadata?: {
+    callDepth?: number;
+    isRecursive?: boolean;
+    isCrossFile?: boolean;
+    callPattern?: string;
+    [key: string]: any;
+  };
 }
 
 export interface ImportRelation {
@@ -108,12 +120,18 @@ export interface ImportRelation {
   importType: 'default' | 'named' | 'namespace' | 'sideEffect';
   importName?: string;
   location: Location;
+  metadata?: {
+    isRelative?: boolean;
+    isNodeModule?: boolean;
+    isCrossLanguage?: boolean;
+    [key: string]: any;
+  };
 }
 
 export interface ExportRelation {
   exporter: string;
   exported: string;
-  exportType: 'default' | 'named' | 'reexport';
+  exportType: 'default' | 'named' | 'reexport' | 'commonjs';
   exportName?: string;
   location: Location;
 }
@@ -129,6 +147,11 @@ export interface AnalysisResult {
     totalFiles: number;
     totalSymbols: number;
     totalCallRelations: number;
+    // 增强的分析信息
+    crossLanguageCalls?: number;
+    languageDistribution?: any;
+    complexityMetrics?: any;
+    [key: string]: any;
   };
 }
 
@@ -138,4 +161,9 @@ export interface AnalysisOptions {
   maxDepth?: number;
   excludePatterns?: string[];
   followImports?: boolean;
+  // 多语言支持选项
+  includeJavaScript?: boolean;  // 是否包含JavaScript文件
+  includeTypeScript?: boolean;  // 是否包含TypeScript文件
+  analyzeCallChains?: boolean;  // 是否分析调用链
+  detectPatterns?: boolean;     // 是否检测设计模式
 }

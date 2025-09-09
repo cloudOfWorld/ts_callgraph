@@ -4,7 +4,7 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import * as path from 'path';
 import * as fs from 'fs';
-import { TypeScriptAnalyzer } from '../core/analyzer';
+import { MultiLanguageAnalyzer } from '../core/multi-language-analyzer';
 import { JsonFormatter } from '../formatters/json';
 import { MermaidFormatter } from '../formatters/mermaid';
 import { HtmlFormatter } from '../formatters/html';
@@ -27,7 +27,7 @@ class CLI {
   private setupCommands(): void {
     this.program
       .name('ts-callgraph')
-      .description('TypeScript工程分析工具，生成类、属性、方法、函数等的调用和依赖关系图')
+      .description('TypeScript/JavaScript工程分析工具，生成类、属性、方法、函数等的调用和依赖关系图')
       .version('1.0.0');
 
     this.program
@@ -42,6 +42,10 @@ class CLI {
       .option('--exclude <patterns>', '排除的文件模式，逗号分隔', 'node_modules/**,**/*.d.ts')
       .option('--include-private', '包含私有成员')
       .option('--include-node-modules', '包含node_modules中的文件')
+      .option('--include-js', '包含JavaScript文件 (.js, .jsx, .mjs, .cjs)', true)
+      .option('--include-ts', '包含TypeScript文件 (.ts, .tsx)', true)
+      .option('--js-only', '仅分析JavaScript文件')
+      .option('--ts-only', '仅分析TypeScript文件')
       .option('--max-depth <number>', '最大分析深度', '10')
       .option('--follow-imports', '跟踪导入的文件')
       .option('--verbose', '详细输出')
@@ -50,7 +54,7 @@ class CLI {
     // 添加子命令
     this.program
       .command('analyze')
-      .description('分析TypeScript项目')
+      .description('分析TypeScript/JavaScript项目')
       .argument('<patterns...>')
       .option('-o, --output <path>', '输出文件路径')
       .option('-f, --format <type>', '输出格式', 'json')
@@ -69,7 +73,7 @@ class CLI {
    */
   private async handleAnalyze(patterns: string[], options: any): Promise<void> {
     try {
-      console.log(chalk.blue('🔍 开始分析TypeScript项目...'));
+      console.log(chalk.blue('🔍 开始分析TypeScript/JavaScript项目...'));
       console.log(chalk.gray(`模式: ${patterns.join(', ')}`));
 
       // 解析选项
@@ -78,7 +82,11 @@ class CLI {
         includeNodeModules: options.includeNodeModules,
         maxDepth: parseInt(options.maxDepth) || 10,
         excludePatterns: options.exclude.split(',').map((p: string) => p.trim()),
-        followImports: options.followImports
+        followImports: options.followImports,
+        includeJavaScript: options.jsOnly ? true : (options.tsOnly ? false : (options.includeJs !== false)),
+        includeTypeScript: options.tsOnly ? true : (options.jsOnly ? false : (options.includeTs !== false)),
+        analyzeCallChains: true,
+        detectPatterns: true
       };
 
       if (options.verbose) {
@@ -87,7 +95,13 @@ class CLI {
 
       // 创建分析器
       const rootPath = process.cwd();
-      const analyzer = new TypeScriptAnalyzer(rootPath, analysisOptions);
+      const analyzer = new MultiLanguageAnalyzer(rootPath, analysisOptions);
+      
+      // 显示语言支持信息
+      const languageInfo = [];
+      if (analysisOptions.includeTypeScript) languageInfo.push('TypeScript');
+      if (analysisOptions.includeJavaScript) languageInfo.push('JavaScript');
+      console.log(chalk.gray(`支持语言: ${languageInfo.join(', ')}`));
 
       // 执行分析
       const startTime = Date.now();

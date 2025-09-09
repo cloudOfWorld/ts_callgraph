@@ -132,8 +132,60 @@ export class Utils {
    * 检查文件是否为TypeScript文件
    */
   static isTypeScriptFile(filePath: string): boolean {
-    const ext = path.extname(filePath);
+    const ext = path.extname(filePath).toLowerCase();
     return ['.ts', '.tsx', '.d.ts'].includes(ext);
+  }
+
+  /**
+   * 检查文件是否为JavaScript文件
+   */
+  static isJavaScriptFile(filePath: string): boolean {
+    const ext = path.extname(filePath).toLowerCase();
+    return ['.js', '.jsx', '.mjs', '.cjs'].includes(ext);
+  }
+
+  /**
+   * 检查文件是否为支持的文件类型
+   */
+  static isSupportedFile(filePath: string): boolean {
+    return this.isTypeScriptFile(filePath) || this.isJavaScriptFile(filePath);
+  }
+
+  /**
+   * 获取文件的语言类型
+   */
+  static getFileLanguage(filePath: string): 'typescript' | 'javascript' | 'unknown' {
+    if (this.isTypeScriptFile(filePath)) {
+      return 'typescript';
+    }
+    if (this.isJavaScriptFile(filePath)) {
+      return 'javascript';
+    }
+    return 'unknown';
+  }
+
+  /**
+   * 检查是否为JSX/TSX文件
+   */
+  static isReactFile(filePath: string): boolean {
+    const ext = path.extname(filePath).toLowerCase();
+    return ['.jsx', '.tsx'].includes(ext);
+  }
+
+  /**
+   * 检查是否为ES模块文件
+   */
+  static isESModuleFile(filePath: string): boolean {
+    const ext = path.extname(filePath).toLowerCase();
+    return ext === '.mjs';
+  }
+
+  /**
+   * 检查是否为CommonJS模块文件
+   */
+  static isCommonJSFile(filePath: string): boolean {
+    const ext = path.extname(filePath).toLowerCase();
+    return ext === '.cjs';
   }
 
   /**
