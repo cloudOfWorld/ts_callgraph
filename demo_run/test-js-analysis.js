@@ -4,7 +4,7 @@
  * 测试JavaScript文件分析功能
  */
 
-const { MultiLanguageAnalyzer } = require('./dist/index');
+const { MultiLanguageAnalyzer } = require('../dist/index');
 const path = require('path');
 
 async function testJavaScriptAnalysis() {

@@ -4,7 +4,7 @@
  * 测试多语言分析功能的简单脚本
  */
 
-const { MultiLanguageAnalyzer } = require('./dist/index');
+const { MultiLanguageAnalyzer } = require('../dist/index');
 const path = require('path');
 
 async function testMultiLanguageAnalysis() {
