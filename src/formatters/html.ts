@@ -745,6 +745,74 @@ export class HtmlFormatter extends BaseFormatter {
       default: return '+';
     }
   }
+  
+  /**
+   * 清理类名称
+   */
+  private sanitizeClassName(name: string): string {
+    return name.replace(/[^a-zA-Z0-9_]/g, '_');
+  }
+  
+  /**
+   * 清理名称
+   */
+  private sanitizeName(name: string): string {
+    return name.replace(/[^a-zA-Z0-9_]/g, '_');
+  }
+  
+  /**
+   * 获取简单的Mermaid类型
+   */
+  private getSimpleMermaidType(typeStr?: string): string {
+    if (!typeStr) return '';
+    
+    // 基本类型映射
+    const typeMap: { [key: string]: string } = {
+      'string': 'string',
+      'number': 'number',
+      'boolean': 'boolean',
+      'void': 'void',
+      'Date': 'Date'
+    };
+    
+    // 如果是基本类型，直接返回
+    if (typeMap[typeStr]) {
+      return typeMap[typeStr];
+    }
+    
+    // 处理数组类型
+    if (typeStr.endsWith('[]')) {
+      const baseType = typeStr.replace('[]', '');
+      return this.getSimpleMermaidType(baseType) + '[]';
+    }
+    
+    // 处理复杂类型
+    if (typeStr.includes('<') || typeStr.includes('|') || typeStr.includes('&')) {
+      // 提取第一个类型名
+      const firstType = typeStr.split(/[<|&]/)[0].trim();
+      return firstType.length > 15 ? firstType.substring(0, 12) + '...' : firstType;
+    }
+    
+    // 限制长度
+    return typeStr.length > 15 ? typeStr.substring(0, 12) + '...' : typeStr;
+  }
+  
+  /**
+   * 提取方法返回类型
+   */
+  private extractMethodReturnType(returnTypeStr?: string): string {
+    if (!returnTypeStr) return 'void';
+    
+    // 如果是函数类型，提取返回类型
+    if (returnTypeStr.includes('=>')) {
+      const parts = returnTypeStr.split('=>');
+      if (parts.length > 1) {
+        return parts[parts.length - 1].trim();
+      }
+    }
+    
+    return returnTypeStr;
+  }
 
   /**
    * 生成JavaScript代码
@@ -1100,8 +1168,103 @@ export class HtmlFormatter extends BaseFormatter {
 
         // 渲染Mermaid图表
         function renderMermaid() {
-            mermaid.initialize({ startOnLoad: true });
-            mermaid.init(undefined, document.querySelector('#class-mermaid'));
+            try {
+                // 重新初始化Mermaid
+                mermaid.initialize({
+                    startOnLoad: false,
+                    theme: 'default',
+                    securityLevel: 'loose',
+                    fontFamily: 'Arial, sans-serif'
+                });
+                
+                // 获取Mermaid容器
+                const element = document.querySelector('#class-mermaid');
+                if (element) {
+                    // 清空容器
+                    element.innerHTML = '';
+                    
+                    // 重新设置类名
+                    element.className = 'mermaid';
+                    
+                    // 获取类图数据
+                    const classData = analysisData.symbols.filter(s => s.type === 'class' || s.type === 'interface');
+                    
+                    if (classData.length === 0) {
+                        element.innerHTML = '<p>没有找到类或接口数据</p>';
+                        return;
+                    }
+                    
+                    // 生成简化的Mermaid类图
+                    let diagram = 'classDiagram' + '\\n';
+                    
+                    classData.slice(0, 10).forEach(cls => {
+                        const className = cls.name.replace(/[^a-zA-Z0-9_]/g, '_');
+                        
+                        if (cls.type === 'interface') {
+                            diagram += '  class ' + className + ' {' + '\\n';
+                            diagram += '    <<interface>>' + '\\n';
+                        } else {
+                            diagram += '  class ' + className + ' {' + '\\n';
+                        }
+                        
+                        // 添加主要属性和方法
+                        if (cls.properties && cls.properties.length > 0) {
+                            cls.properties.slice(0, 4).forEach(prop => {
+                                const visibility = prop.accessibility === 'private' ? '-' : 
+                                                 prop.accessibility === 'protected' ? '#' : '+';
+                                const propName = prop.name.replace(/[^a-zA-Z0-9_]/g, '_');
+                                diagram += '    ' + visibility + propName + '\\n';
+                            });
+                        }
+                        
+                        if (cls.methods && cls.methods.length > 0) {
+                            cls.methods.slice(0, 4).forEach(method => {
+                                const visibility = method.accessibility === 'private' ? '-' : 
+                                                 method.accessibility === 'protected' ? '#' : '+';
+                                const methodName = method.name.replace(/[^a-zA-Z0-9_]/g, '_');
+                                diagram += '    ' + visibility + methodName + '()' + '\\n';
+                            });
+                        }
+                        
+                        diagram += '  }' + '\\n';
+                    });
+                    
+                    // 添加关系
+                    classData.forEach(cls => {
+                        if (cls.type === 'class') {
+                            const className = cls.name.replace(/[^a-zA-Z0-9_]/g, '_');
+                            
+                            if (cls.extends && cls.extends.length > 0) {
+                                cls.extends.forEach(parent => {
+                                    const parentName = parent.replace(/[^a-zA-Z0-9_]/g, '_');
+                                    diagram += '  ' + parentName + ' <|-- ' + className + '\\n';
+                                });
+                            }
+                            
+                            if (cls.implements && cls.implements.length > 0) {
+                                cls.implements.forEach(iface => {
+                                    const interfaceName = iface.replace(/[^a-zA-Z0-9_]/g, '_');
+                                    diagram += '  ' + interfaceName + ' <|.. ' + className + '\\n';
+                                });
+                            }
+                        }
+                    });
+                    
+                    console.log('Mermaid diagram:', diagram);
+                    
+                    // 设置内容
+                    element.textContent = diagram;
+                    
+                    // 渲染
+                    mermaid.init(undefined, element);
+                }
+            } catch (error) {
+                console.error('Mermaid rendering error:', error);
+                const element = document.querySelector('#class-mermaid');
+                if (element) {
+                    element.innerHTML = '<p style="color: red;">类图渲染失败: ' + error.message + '</p>';
+                }
+            }
         }
 
         // 初始化
