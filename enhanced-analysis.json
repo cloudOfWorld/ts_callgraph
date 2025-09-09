@@ -3698,7 +3698,7 @@
     "/Users/yangqiaokun/openai/callgraph/examples/user-service.ts"
   ],
   "metadata": {
-    "analysisDate": "2025-09-09T08:30:07.579Z",
+    "analysisDate": "2025-09-09T08:29:01.775Z",
     "totalFiles": 2,
     "totalSymbols": 30,
     "totalCallRelations": 48
