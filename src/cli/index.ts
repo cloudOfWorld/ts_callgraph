@@ -37,6 +37,8 @@ class CLI {
       .option('-j, --json <path>', 'JSON格式输出路径')
       .option('-m, --mermaid <path>', 'Mermaid格式输出路径')
       .option('--html <path>', 'HTML格式输出路径')
+      .option('--class-diagram', '生成Mermaid类图而不是流程图')
+      .option('--simple-class-diagram', '生成简化的Mermaid类图（确保兼容性）')
       .option('--exclude <patterns>', '排除的文件模式，逗号分隔', 'node_modules/**,**/*.d.ts')
       .option('--include-private', '包含私有成员')
       .option('--include-node-modules', '包含node_modules中的文件')
@@ -164,10 +166,20 @@ class CLI {
                          'callgraph.mmd';
       
       const formatter = new MermaidFormatter();
-      const mermaidContent = formatter.format(result);
+      let mermaidContent: string;
+      
+      if (options.simpleClassDiagram) {
+        mermaidContent = formatter.formatAsSimpleClassDiagram(result);
+        console.log(chalk.green(`📊 Mermaid简化类图输出: ${mermaidPath}`));
+      } else if (options.classDiagram) {
+        mermaidContent = formatter.formatAsClassDiagram(result);
+        console.log(chalk.green(`📊 Mermaid类图输出: ${mermaidPath}`));
+      } else {
+        mermaidContent = formatter.format(result);
+        console.log(chalk.green(`📊 Mermaid流程图输出: ${mermaidPath}`));
+      }
       
       fs.writeFileSync(path.resolve(mermaidPath), mermaidContent);
-      console.log(chalk.green(`📊 Mermaid输出: ${mermaidPath}`));
     }
 
     // HTML 输出

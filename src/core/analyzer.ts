@@ -164,6 +164,12 @@ export class TypeScriptAnalyzer {
       case ts.SyntaxKind.NewExpression:
         this.analyzeCall(node as ts.CallExpression | ts.NewExpression, sourceFile);
         break;
+      case ts.SyntaxKind.PropertyAccessExpression:
+        // 分析属性访问，但跳过方法调用中的属性访问（因为已经在analyzeCall中处理了）
+        if (!ts.isCallExpression(node.parent)) {
+          this.analyzePropertyAccess(node as ts.PropertyAccessExpression, sourceFile);
+        }
+        break;
     }
 
     // 递归访问子节点
@@ -331,6 +337,10 @@ export class TypeScriptAnalyzer {
     const location = Utils.getLocation(node, sourceFile);
     const id = Utils.generateId(name, location);
 
+    // 获取属性的类型信息
+    const propertyTypeString = Utils.getTypeString(this.typeChecker, node);
+    const typeInfo = this.analyzePropertyType(node, sourceFile, propertyTypeString);
+
     return {
       type: 'property',
       id,
@@ -338,15 +348,119 @@ export class TypeScriptAnalyzer {
       location,
       accessibility: Utils.getVisibility(node),
       documentation: Utils.getDocumentation(node),
-      propertyType: Utils.getTypeString(this.typeChecker, node),
+      propertyType: propertyTypeString,
+      typeClassName: typeInfo?.className,
+      typeFilePath: typeInfo?.filePath,
+      isCustomType: typeInfo?.isCustomType,
       isStatic: Utils.isStatic(node),
       isReadonly: Utils.isReadonly(node)
     };
   }
 
   /**
-   * 分析方法声明
+   * 分析属性类型信息
    */
+  private analyzePropertyType(node: ts.PropertyDeclaration, sourceFile: ts.SourceFile, typeString?: string): {
+    className?: string;
+    filePath?: string;
+    isCustomType?: boolean;
+  } | undefined {
+    try {
+      // 获取属性的类型
+      const type = this.typeChecker.getTypeAtLocation(node);
+      const symbol = type.getSymbol();
+      
+      if (symbol) {
+        const className = symbol.getName();
+        
+        // 检查是否为自定义类型（非原始类型）
+        const isCustomType = this.isCustomType(className, typeString);
+        
+        if (isCustomType) {
+          // 尝试找到类型的定义位置
+          const declarations = symbol.valueDeclaration;
+          if (declarations) {
+            const declarationFile = declarations.getSourceFile();
+            return {
+              className: className,
+              filePath: declarationFile.fileName,
+              isCustomType: true
+            };
+          }
+          
+          // 如果没有找到声明，尝试从已知符号中查找
+          const knownSymbol = this.findSymbolByName(className, sourceFile.fileName);
+          if (knownSymbol) {
+            return {
+              className: className,
+              filePath: knownSymbol.location.filePath,
+              isCustomType: true
+            };
+          }
+          
+          return {
+            className: className,
+            isCustomType: true
+          };
+        }
+      }
+      
+      // 处理数组类型，Array<CustomType> 或 CustomType[]
+      if (typeString) {
+        const arrayMatch = typeString.match(/^(\w+)\[\]$/) || typeString.match(/^Array<(\w+)>$/);
+        if (arrayMatch) {
+          const elementType = arrayMatch[1];
+          if (this.isCustomType(elementType)) {
+            const elementSymbol = this.findSymbolByName(elementType, sourceFile.fileName);
+            return {
+              className: elementType,
+              filePath: elementSymbol?.location.filePath,
+              isCustomType: true
+            };
+          }
+        }
+      }
+    } catch (error) {
+      // 类型检查失败，尝试从类型字符串推断
+      if (typeString && this.isCustomType(typeString)) {
+        const symbolFromString = this.findSymbolByName(typeString, sourceFile.fileName);
+        if (symbolFromString) {
+          return {
+            className: typeString,
+            filePath: symbolFromString.location.filePath,
+            isCustomType: true
+          };
+        }
+      }
+    }
+    
+    return undefined;
+  }
+
+  /**
+   * 判断是否为自定义类型
+   */
+  private isCustomType(typeName?: string, fullTypeString?: string): boolean {
+    if (!typeName) return false;
+    
+    // 排除原始类型和常见内建类型
+    const builtInTypes = new Set([
+      'string', 'number', 'boolean', 'object', 'undefined', 'null', 'void', 'any', 'unknown',
+      'Date', 'Array', 'Map', 'Set', 'Promise', 'Function', 'RegExp', 'Error',
+      '__type', // TypeScript 内部类型
+    ]);
+    
+    if (builtInTypes.has(typeName)) {
+      return false;
+    }
+    
+    // 检查是否为数字字面量类型或其他原始类型
+    if (/^\d+$/.test(typeName) || typeName.includes('|') || typeName.includes('&')) {
+      return false;
+    }
+    
+    return true;
+  }
   private analyzeMethod(node: ts.MethodDeclaration, sourceFile: ts.SourceFile): any {
     if (!ts.isIdentifier(node.name)) return null;
 
@@ -410,20 +524,103 @@ export class TypeScriptAnalyzer {
     const location = Utils.getLocation(node, sourceFile);
     const id = Utils.generateId(name, location);
 
+    // 获取属性的类型信息
+    const propertyTypeString = Utils.getTypeString(this.typeChecker, node);
+    const typeInfo = this.analyzePropertySignatureType(node, sourceFile, propertyTypeString);
+
     return {
       type: 'property',
       id,
       name,
       location,
       documentation: Utils.getDocumentation(node),
-      propertyType: Utils.getTypeString(this.typeChecker, node),
+      propertyType: propertyTypeString,
+      typeClassName: typeInfo?.className,
+      typeFilePath: typeInfo?.filePath,
+      isCustomType: typeInfo?.isCustomType,
       isReadonly: Utils.isReadonly(node)
     };
   }
 
   /**
-   * 分析方法签名（接口中的方法）
+   * 分析接口属性类型信息
    */
+  private analyzePropertySignatureType(node: ts.PropertySignature, sourceFile: ts.SourceFile, typeString?: string): {
+    className?: string;
+    filePath?: string;
+    isCustomType?: boolean;
+  } | undefined {
+    try {
+      // 获取属性的类型
+      const type = this.typeChecker.getTypeAtLocation(node);
+      const symbol = type.getSymbol();
+      
+      if (symbol) {
+        const className = symbol.getName();
+        
+        // 检查是否为自定义类型
+        const isCustomType = this.isCustomType(className, typeString);
+        
+        if (isCustomType) {
+          // 尝试找到类型的定义位置
+          const declarations = symbol.valueDeclaration;
+          if (declarations) {
+            const declarationFile = declarations.getSourceFile();
+            return {
+              className: className,
+              filePath: declarationFile.fileName,
+              isCustomType: true
+            };
+          }
+          
+          // 如果没有找到声明，尝试从已知符号中查找
+          const knownSymbol = this.findSymbolByName(className, sourceFile.fileName);
+          if (knownSymbol) {
+            return {
+              className: className,
+              filePath: knownSymbol.location.filePath,
+              isCustomType: true
+            };
+          }
+          
+          return {
+            className: className,
+            isCustomType: true
+          };
+        }
+      }
+      
+      // 处理数组类型
+      if (typeString) {
+        const arrayMatch = typeString.match(/^(\w+)\[\]$/) || typeString.match(/^Array<(\w+)>$/);
+        if (arrayMatch) {
+          const elementType = arrayMatch[1];
+          if (this.isCustomType(elementType)) {
+            const elementSymbol = this.findSymbolByName(elementType, sourceFile.fileName);
+            return {
+              className: elementType,
+              filePath: elementSymbol?.location.filePath,
+              isCustomType: true
+            };
+          }
+        }
+      }
+    } catch (error) {
+      // 类型检查失败，尝试从类型字符串推断
+      if (typeString && this.isCustomType(typeString)) {
+        const symbolFromString = this.findSymbolByName(typeString, sourceFile.fileName);
+        if (symbolFromString) {
+          return {
+            className: typeString,
+            filePath: symbolFromString.location.filePath,
+            isCustomType: true
+          };
+        }
+      }
+    }
+    
+    return undefined;
+  }
   private analyzeMethodSignature(node: ts.MethodSignature, sourceFile: ts.SourceFile): any {
     if (!ts.isIdentifier(node.name)) return null;
 
@@ -573,6 +770,28 @@ export class TypeScriptAnalyzer {
   }
 
   /**
+   * 分析属性访问
+   */
+  private analyzePropertyAccess(node: ts.PropertyAccessExpression, sourceFile: ts.SourceFile): void {
+    const location = Utils.getLocation(node, sourceFile);
+    
+    // 获取调用者信息（包含此属性访问的函数/方法）
+    const caller = this.findContainingFunctionDetails(node, sourceFile);
+    if (!caller) return;
+
+    // 获取属性访问的详细信息
+    const propertyAccess = this.extractPropertyAccessDetails(node, sourceFile);
+    if (!propertyAccess) return;
+
+    this.callRelations.push({
+      caller,
+      callee: propertyAccess,
+      callType: 'property',
+      location
+    });
+  }
+
+  /**
    * 提取被调用者的详细信息
    */
   private extractCalleeDetails(node: ts.CallExpression | ts.NewExpression, sourceFile: ts.SourceFile): CallRelationParticipant | undefined {
@@ -625,8 +844,42 @@ export class TypeScriptAnalyzer {
   }
 
   /**
-   * 获取对象的类型信息
+   * 提取属性访问的详细信息
    */
+  private extractPropertyAccessDetails(node: ts.PropertyAccessExpression, sourceFile: ts.SourceFile): CallRelationParticipant | undefined {
+    const propertyName = node.name.text;
+    const objectExpression = node.expression;
+    
+    // 获取对象的类型信息
+    const objectType = this.getObjectTypeInfo(objectExpression, sourceFile);
+    
+    // 尝试从已知符号中查找属性定义
+    let propertySymbol: Symbol | undefined;
+    
+    if (objectType?.className) {
+      // 查找类中的属性
+      const classSymbol = this.findSymbolByName(objectType.className, sourceFile.fileName);
+      if (classSymbol && (classSymbol.type === 'class' || classSymbol.type === 'interface')) {
+        const classData = classSymbol as any;
+        propertySymbol = classData.properties?.find((prop: any) => prop.name === propertyName);
+      }
+    }
+    
+    // 如果没有找到属性定义，尝试查找所有同名属性
+    if (!propertySymbol) {
+      propertySymbol = this.symbols.find(s => 
+        (s.type === 'property' || s.type === 'variable') && s.name === propertyName
+      );
+    }
+
+    return {
+      name: propertyName,
+      type: 'property',
+      className: objectType?.className,
+      id: propertySymbol?.id,
+      filePath: propertySymbol?.location.filePath || objectType?.filePath || sourceFile.fileName
+    };
+  }
   private getObjectTypeInfo(expression: ts.Expression, sourceFile: ts.SourceFile): { className?: string, filePath?: string } | undefined {
     try {
       const type = this.typeChecker.getTypeAtLocation(expression);

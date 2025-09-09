@@ -102,9 +102,12 @@ export class MermaidFormatter extends BaseFormatter {
     symbols.forEach(symbol => {
       const nodeId = this.cleanId(symbol.id);
       const label = this.formatNodeLabel(symbol);
-      const shape = this.getNodeShape(symbol);
+      const cssClass = this.getNodeCssClass(symbol);
       
-      nodes.push(`  ${nodeId}${shape}["${label}"]`);
+      nodes.push(`  ${nodeId}["${label}"]`);
+      if (cssClass) {
+        nodes.push(`  ${nodeId}:::${cssClass}`);
+      }
     });
 
     return nodes;
@@ -122,13 +125,17 @@ export class MermaidFormatter extends BaseFormatter {
       const params = func.parameters?.map((p: any) => p.name).join(', ') || '';
       label += `(${params})`;
       
-      if (func.returnType) {
-        label += `: ${func.returnType}`;
+      if (func.returnType && func.returnType.length < 30) {
+        // 限制返回类型长度避免标签过长
+        const returnType = func.returnType.replace(/\(.*?\) => /, '');
+        label += `: ${returnType}`;
       }
     } else if (symbol.type === 'property' || symbol.type === 'variable') {
       const prop = symbol as any;
-      if (prop.propertyType || prop.variableType) {
-        label += `: ${prop.propertyType || prop.variableType}`;
+      const propType = prop.propertyType || prop.variableType;
+      if (propType && propType.length < 20) {
+        // 限制属性类型长度
+        label += `: ${propType}`;
       }
     }
 
@@ -144,27 +151,28 @@ export class MermaidFormatter extends BaseFormatter {
       }
     }
 
-    return this.escapeString(label);
+    // 清理标签中的特殊字符
+    return label.replace(/["/\\\n\r]/g, ' ');
   }
 
   /**
-   * 获取节点形状
+   * 获取节点CSS类
    */
-  private getNodeShape(symbol: Symbol): string {
+  private getNodeCssClass(symbol: Symbol): string {
     switch (symbol.type) {
       case 'class':
-        return ':::class';
+        return 'class';
       case 'interface':
-        return ':::interface';
+        return 'interface';
       case 'function':
-        return ':::function';
+        return 'function';
       case 'method':
-        return ':::method';
+        return 'method';
       case 'property':
       case 'variable':
-        return ':::property';
+        return 'property';
       case 'constructor':
-        return ':::constructor';
+        return 'constructor';
       default:
         return '';
     }
@@ -175,25 +183,57 @@ export class MermaidFormatter extends BaseFormatter {
    */
   private generateCallEdges(callRelations: CallRelation[], symbols: Symbol[]): string[] {
     const edges: string[] = [];
-    const symbolMap = new Map(symbols.map(s => [s.name, s.id]));
+    const symbolIdMap = new Map(symbols.map(s => [s.id, s]));
 
     callRelations.forEach(call => {
-      const callerName = typeof call.caller === 'string' ? call.caller : call.caller.name;
-      const calleeName = typeof call.callee === 'string' ? call.callee : call.callee.name;
-      
-      const callerId = symbolMap.get(callerName);
-      const calleeId = symbolMap.get(calleeName);
-      
-      if (callerId && calleeId) {
-        const cleanCallerId = this.cleanId(callerId);
-        const cleanCalleeId = this.cleanId(calleeId);
-        const edgeLabel = this.getCallEdgeLabel(call);
+      try {
+        const caller = call.caller;
+        const callee = call.callee;
         
-        edges.push(`  ${cleanCallerId} -->${edgeLabel} ${cleanCalleeId}`);
+        if (!caller || !callee) return;
+        
+        // 优先使用ID查找，其次使用名称
+        let callerSymbol: Symbol | undefined;
+        let calleeSymbol: Symbol | undefined;
+        
+        if (caller.id) {
+          callerSymbol = symbolIdMap.get(caller.id);
+        }
+        if (!callerSymbol && caller.name) {
+          callerSymbol = symbols.find(s => s.name === caller.name);
+        }
+        
+        if (callee.id) {
+          calleeSymbol = symbolIdMap.get(callee.id);
+        }
+        if (!calleeSymbol && callee.name) {
+          calleeSymbol = symbols.find(s => s.name === callee.name);
+        }
+        
+        if (callerSymbol && calleeSymbol) {
+          const cleanCallerId = this.cleanId(callerSymbol.id);
+          const cleanCalleeId = this.cleanId(calleeSymbol.id);
+          const edgeLabel = this.getCallEdgeLabel(call);
+          
+          // 确保边不重复且节点ID合法
+          if (cleanCallerId !== cleanCalleeId && this.isValidId(cleanCallerId) && this.isValidId(cleanCalleeId)) {
+            edges.push(`  ${cleanCallerId} -->${edgeLabel} ${cleanCalleeId}`);
+          }
+        }
+      } catch (error) {
+        // 静默忽略错误，避免中断整个生成过程
+        console.warn(`Error generating call edge: ${error}`);
       }
     });
 
     return edges;
+  }
+  
+  /**
+   * 验证ID是否合法
+   */
+  private isValidId(id: string): boolean {
+    return typeof id === 'string' && id.length > 0 && /^[a-zA-Z0-9_]+$/.test(id);
   }
 
   /**
@@ -204,7 +244,7 @@ export class MermaidFormatter extends BaseFormatter {
       'method': '|calls|',
       'function': '|invokes|',
       'constructor': '|new|',
-      'property': '|accesses|'
+      'property': '|access|'
     };
     
     return labels[call.callType] || '|uses|';
@@ -285,23 +325,32 @@ export class MermaidFormatter extends BaseFormatter {
    */
   private generateClassDefinition(classSymbol: any): string[] {
     const lines: string[] = [];
-    const className = this.cleanId(classSymbol.name);
+    const className = classSymbol.name;
     
     lines.push(`  class ${className} {`);
     
     // 添加属性
     classSymbol.properties?.forEach((prop: any) => {
       const visibility = this.getVisibilitySymbol(prop.accessibility);
-      const type = prop.propertyType ? ` : ${prop.propertyType}` : '';
-      lines.push(`    ${visibility}${prop.name}${type}`);
+      const propType = this.simplifyType(prop.propertyType);
+      const staticMark = prop.isStatic ? '$' : '';
+      lines.push(`    ${visibility}${prop.name}${staticMark} ${propType}`);
     });
 
     // 添加方法
     classSymbol.methods?.forEach((method: any) => {
       const visibility = this.getVisibilitySymbol(method.accessibility);
-      const params = method.parameters?.map((p: any) => `${p.name}: ${p.type || 'any'}`).join(', ') || '';
-      const returnType = method.returnType ? ` : ${method.returnType}` : '';
-      lines.push(`    ${visibility}${method.name}(${params})${returnType}`);
+      const staticMark = method.isStatic ? '$' : '';
+      const abstractMark = method.isAbstract ? '*' : '';
+      const params = method.parameters?.map((p: any) => `${p.name}`).join(', ') || '';
+      const returnType = this.simplifyType(this.extractReturnType(method.returnType));
+      lines.push(`    ${visibility}${method.name}${staticMark}${abstractMark}(${params}) ${returnType}`);
+    });
+
+    // 添加构造函数
+    classSymbol.constructors?.forEach((ctor: any) => {
+      const params = ctor.parameters?.map((p: any) => `${p.name}`).join(', ') || '';
+      lines.push(`    +${ctor.name}(${params})`);
     });
 
     lines.push('  }');
@@ -314,22 +363,22 @@ export class MermaidFormatter extends BaseFormatter {
    */
   private generateInterfaceDefinition(interfaceSymbol: any): string[] {
     const lines: string[] = [];
-    const interfaceName = this.cleanId(interfaceSymbol.name);
+    const interfaceName = interfaceSymbol.name;
     
     lines.push(`  class ${interfaceName} {`);
     lines.push(`    <<interface>>`);
     
     // 添加属性
     interfaceSymbol.properties?.forEach((prop: any) => {
-      const type = prop.propertyType ? ` : ${prop.propertyType}` : '';
-      lines.push(`    +${prop.name}${type}`);
+      const propType = this.simplifyType(prop.propertyType);
+      lines.push(`    +${prop.name} ${propType}`);
     });
 
     // 添加方法
     interfaceSymbol.methods?.forEach((method: any) => {
-      const params = method.parameters?.map((p: any) => `${p.name}: ${p.type || 'any'}`).join(', ') || '';
-      const returnType = method.returnType ? ` : ${method.returnType}` : '';
-      lines.push(`    +${method.name}(${params})${returnType}`);
+      const params = method.parameters?.map((p: any) => `${p.name}`).join(', ') || '';
+      const returnType = this.simplifyType(this.extractReturnType(method.returnType));
+      lines.push(`    +${method.name}(${params}) ${returnType}`);
     });
 
     lines.push('  }');
@@ -349,21 +398,72 @@ export class MermaidFormatter extends BaseFormatter {
         
         // 继承关系
         classSymbol.extends?.forEach((parent: string) => {
-          const parentId = this.cleanId(parent);
-          const childId = this.cleanId(classSymbol.name);
-          relationships.push(`  ${parentId} <|-- ${childId}`);
+          const parentName = parent.trim();
+          const childName = classSymbol.name;
+          relationships.push(`  ${parentName} <|-- ${childName}`);
         });
 
         // 实现关系
         classSymbol.implements?.forEach((iface: string) => {
-          const interfaceId = this.cleanId(iface);
-          const classId = this.cleanId(classSymbol.name);
-          relationships.push(`  ${interfaceId} <|.. ${classId}`);
+          const interfaceName = iface.trim();
+          const className = classSymbol.name;
+          relationships.push(`  ${interfaceName} <|.. ${className}`);
         });
       }
     });
 
     return relationships;
+  }
+  
+  /**
+   * 简化类型表达式
+   */
+  private simplifyType(typeStr?: string): string {
+    if (!typeStr) return '';
+    
+    // 移除函数签名，只保留返回类型
+    if (typeStr.includes('=>')) {
+      const parts = typeStr.split('=>');
+      if (parts.length > 1) {
+        typeStr = parts[parts.length - 1].trim();
+      }
+    }
+    
+    // 简化泛型表达式
+    typeStr = typeStr.replace(/Map<([^,]+),\s*([^>]+)>/g, 'Map~$1,$2~');
+    typeStr = typeStr.replace(/Promise<([^>]+)>/g, 'Promise~$1~');
+    typeStr = typeStr.replace(/Array<([^>]+)>/g, '$1[]');
+    typeStr = typeStr.replace(/Partial<([^>]+)>/g, '$1');
+    
+    // 移除复杂的联合类型
+    if (typeStr.includes('|') && typeStr.length > 20) {
+      const parts = typeStr.split('|');
+      typeStr = parts[0].trim();
+    }
+    
+    // 限制长度
+    if (typeStr.length > 30) {
+      typeStr = typeStr.substring(0, 27) + '...';
+    }
+    
+    return typeStr;
+  }
+  
+  /**
+   * 提取返回类型
+   */
+  private extractReturnType(returnTypeStr?: string): string {
+    if (!returnTypeStr) return 'void';
+    
+    // 如果是函数类型，提取返回类型
+    if (returnTypeStr.includes('=>')) {
+      const parts = returnTypeStr.split('=>');
+      if (parts.length > 1) {
+        return parts[parts.length - 1].trim();
+      }
+    }
+    
+    return returnTypeStr;
   }
 
   /**
@@ -391,5 +491,205 @@ export class MermaidFormatter extends BaseFormatter {
       'classDef constructor fill:#f1f8e9,stroke:#33691e,stroke-width:2px',
       'classDef file fill:#f5f5f5,stroke:#424242,stroke-width:1px'
     ];
+  }
+  
+  /**
+   * 生成保守的类图格式（确保兼容性）
+   */
+  formatAsSimpleClassDiagram(result: AnalysisResult): string {
+    const sections: string[] = [];
+    
+    sections.push('```mermaid');
+    sections.push('classDiagram');
+    sections.push(`  %% Generated: ${result.metadata.analysisDate.toISOString()}`);
+    sections.push('');
+
+    // 按文件分组符号
+    const symbolsByFile = this.groupSymbolsByFile(result.symbols);
+
+    for (const [filePath, symbols] of symbolsByFile.entries()) {
+      const fileName = path.basename(filePath, path.extname(filePath));
+      sections.push(`  %% File: ${fileName}`);
+
+      for (const symbol of symbols) {
+        if (symbol.type === 'class') {
+          sections.push(...this.generateSimpleClassDefinition(symbol as any));
+        } else if (symbol.type === 'interface') {
+          sections.push(...this.generateSimpleInterfaceDefinition(symbol as any));
+        }
+      }
+      sections.push('');
+    }
+
+    // 生成关系
+    const relationships = this.generateSimpleClassRelationships(result);
+    if (relationships.length > 0) {
+      sections.push('  %% Relationships');
+      sections.push(...relationships);
+    }
+
+    sections.push('```');
+
+    return sections.join('\n');
+  }
+  
+  /**
+   * 生成简单类定义
+   */
+  private generateSimpleClassDefinition(classSymbol: any): string[] {
+    const lines: string[] = [];
+    const className = this.sanitizeClassName(classSymbol.name);
+    
+    lines.push(`  class ${className} {`);
+    
+    // 添加主要属性（限制数量和复杂度）
+    const mainProperties = classSymbol.properties?.slice(0, 8) || [];
+    mainProperties.forEach((prop: any) => {
+      const visibility = this.getVisibilitySymbol(prop.accessibility);
+      const propType = this.getSimpleType(prop.propertyType);
+      const staticMark = prop.isStatic ? '$' : '';
+      lines.push(`    ${visibility}${prop.name}${staticMark} ${propType}`);
+    });
+
+    // 添加主要方法（限制数量）
+    const mainMethods = classSymbol.methods?.slice(0, 8) || [];
+    mainMethods.forEach((method: any) => {
+      const visibility = this.getVisibilitySymbol(method.accessibility);
+      const staticMark = method.isStatic ? '$' : '';
+      const abstractMark = method.isAbstract ? '*' : '';
+      const returnType = this.getSimpleType(this.extractReturnType(method.returnType));
+      lines.push(`    ${visibility}${method.name}()${staticMark}${abstractMark} ${returnType}`);
+    });
+
+    lines.push('  }');
+    
+    return lines;
+  }
+  
+  /**
+   * 生成简单接口定义
+   */
+  private generateSimpleInterfaceDefinition(interfaceSymbol: any): string[] {
+    const lines: string[] = [];
+    const interfaceName = this.sanitizeClassName(interfaceSymbol.name);
+    
+    lines.push(`  class ${interfaceName} {`);
+    lines.push(`    <<interface>>`);
+    
+    // 添加属性
+    const properties = interfaceSymbol.properties?.slice(0, 6) || [];
+    properties.forEach((prop: any) => {
+      const propType = this.getSimpleType(prop.propertyType);
+      lines.push(`    +${prop.name} ${propType}`);
+    });
+
+    // 添加方法
+    const methods = interfaceSymbol.methods?.slice(0, 6) || [];
+    methods.forEach((method: any) => {
+      const returnType = this.getSimpleType(this.extractReturnType(method.returnType));
+      lines.push(`    +${method.name}() ${returnType}`);
+    });
+
+    lines.push('  }');
+    
+    return lines;
+  }
+  
+  /**
+   * 生成简单类关系
+   */
+  private generateSimpleClassRelationships(result: AnalysisResult): string[] {
+    const relationships: string[] = [];
+    
+    result.symbols.forEach(symbol => {
+      if (symbol.type === 'class') {
+        const classSymbol = symbol as any;
+        const className = this.sanitizeClassName(classSymbol.name);
+        
+        // 继承关系
+        classSymbol.extends?.forEach((parent: string) => {
+          const parentName = this.sanitizeClassName(parent.trim());
+          relationships.push(`  ${parentName} <|-- ${className}`);
+        });
+
+        // 实现关系
+        classSymbol.implements?.forEach((iface: string) => {
+          const interfaceName = this.sanitizeClassName(iface.trim());
+          relationships.push(`  ${interfaceName} <|.. ${className}`);
+        });
+      }
+    });
+
+    return relationships;
+  }
+  
+  /**
+   * 清理类名
+   */
+  private sanitizeClassName(name: string): string {
+    return name.replace(/[^a-zA-Z0-9_]/g, '_');
+  }
+  
+  /**
+   * 获取简单类型
+   */
+  private getSimpleType(typeStr?: string): string {
+    if (!typeStr) return '';
+    
+    // 基本类型映射
+    const typeMap: { [key: string]: string } = {
+      'string': 'string',
+      'number': 'number',
+      'boolean': 'boolean',
+      'void': 'void',
+      'Date': 'Date'
+    };
+    
+    // 如果是基本类型，直接返回
+    if (typeMap[typeStr]) {
+      return typeMap[typeStr];
+    }
+    
+    // 处理数组类型
+    if (typeStr.endsWith('[]')) {
+      const baseType = typeStr.replace('[]', '');
+      return this.getSimpleType(baseType) + '[]';
+    }
+    
+    // 处理泛型（简化为基本形式）
+    if (typeStr.includes('<')) {
+      if (typeStr.startsWith('Promise<')) {
+        return 'Promise';
+      }
+      if (typeStr.startsWith('Map<')) {
+        return 'Map';
+      }
+      if (typeStr.startsWith('Array<')) {
+        const innerType = typeStr.match(/Array<([^>]+)>/)?.[1] || 'any';
+        return this.getSimpleType(innerType) + '[]';
+      }
+      // 其他泛型类型，取第一部分
+      return typeStr.split('<')[0];
+    }
+    
+    // 处理联合类型，只取第一个
+    if (typeStr.includes('|')) {
+      return this.getSimpleType(typeStr.split('|')[0].trim());
+    }
+    
+    // 如果包含函数签名，简化为返回类型
+    if (typeStr.includes('=>')) {
+      const parts = typeStr.split('=>');
+      if (parts.length > 1) {
+        return this.getSimpleType(parts[parts.length - 1].trim());
+      }
+    }
+    
+    // 限制长度
+    if (typeStr.length > 15) {
+      return typeStr.substring(0, 12) + '...';
+    }
+    
+    return typeStr;
   }
 }
