@@ -636,33 +636,99 @@ export class HtmlFormatter extends BaseFormatter {
     
     let diagram = 'classDiagram\n';
     
+    // 为每个类/接口生成定义
     classes.forEach(cls => {
-      const className = this.cleanId(cls.name);
+      const className = this.sanitizeClassName(cls.name);
       
       if (cls.type === 'interface') {
-        diagram += `  class ${className}{\n`;
+        diagram += `  class ${className} {\n`;
         diagram += `    <<interface>>\n`;
       } else {
-        diagram += `  class ${className}{\n`;
+        diagram += `  class ${className} {\n`;
       }
 
-      // 添加属性和方法
+      // 添加属性（限制数量避免过于复杂）
       if (cls.type === 'class') {
         const classSymbol = cls as any;
         
-        classSymbol.properties?.forEach((prop: any) => {
+        const properties = classSymbol.properties?.slice(0, 8) || [];
+        properties.forEach((prop: any) => {
           const visibility = this.getMermaidVisibility(prop.accessibility);
-          diagram += `    ${visibility}${prop.name}\n`;
+          const propName = this.sanitizeName(prop.name);
+          const propType = this.getSimpleMermaidType(prop.propertyType);
+          const staticMark = prop.isStatic ? '$' : '';
+          
+          if (propType) {
+            diagram += `    ${visibility}${propName}${staticMark} ${propType}\n`;
+          } else {
+            diagram += `    ${visibility}${propName}${staticMark}\n`;
+          }
         });
 
-        classSymbol.methods?.forEach((method: any) => {
+        const methods = classSymbol.methods?.slice(0, 8) || [];
+        methods.forEach((method: any) => {
           const visibility = this.getMermaidVisibility(method.accessibility);
-          const params = method.parameters?.map((p: any) => p.name).join(', ') || '';
-          diagram += `    ${visibility}${method.name}(${params})\n`;
+          const methodName = this.sanitizeName(method.name);
+          const staticMark = method.isStatic ? '$' : '';
+          const abstractMark = method.isAbstract ? '*' : '';
+          const returnType = this.getSimpleMermaidType(this.extractMethodReturnType(method.returnType));
+          
+          if (returnType) {
+            diagram += `    ${visibility}${methodName}()${staticMark}${abstractMark} ${returnType}\n`;
+          } else {
+            diagram += `    ${visibility}${methodName}()${staticMark}${abstractMark}\n`;
+          }
+        });
+      } else if (cls.type === 'interface') {
+        // 接口属性和方法
+        const interfaceSymbol = cls as any;
+        
+        const properties = interfaceSymbol.properties?.slice(0, 6) || [];
+        properties.forEach((prop: any) => {
+          const propName = this.sanitizeName(prop.name);
+          const propType = this.getSimpleMermaidType(prop.propertyType);
+          
+          if (propType) {
+            diagram += `    +${propName} ${propType}\n`;
+          } else {
+            diagram += `    +${propName}\n`;
+          }
+        });
+
+        const methods = interfaceSymbol.methods?.slice(0, 6) || [];
+        methods.forEach((method: any) => {
+          const methodName = this.sanitizeName(method.name);
+          const returnType = this.getSimpleMermaidType(this.extractMethodReturnType(method.returnType));
+          
+          if (returnType) {
+            diagram += `    +${methodName}() ${returnType}\n`;
+          } else {
+            diagram += `    +${methodName}()\n`;
+          }
         });
       }
 
       diagram += '  }\n';
+    });
+    
+    // 添加类之间的关系
+    classes.forEach(cls => {
+      if (cls.type === 'class') {
+        const classSymbol = cls as any;
+        const className = this.sanitizeClassName(cls.name);
+        
+        // 继承关系
+        classSymbol.extends?.forEach((parent: string) => {
+          const parentName = this.sanitizeClassName(parent.trim());
+          diagram += `  ${parentName} <|-- ${className}\n`;
+        });
+
+        // 实现关系
+        classSymbol.implements?.forEach((iface: string) => {
+          const interfaceName = this.sanitizeClassName(iface.trim());
+          diagram += `  ${interfaceName} <|.. ${className}\n`;
+        });
+      }
     });
 
     return diagram;
@@ -742,42 +808,145 @@ export class HtmlFormatter extends BaseFormatter {
         // 渲染调用图
         function renderCallGraph() {
             const container = document.getElementById('call-graph');
-            if (!container || container.hasChildNodes()) return;
-            
-            const width = container.clientWidth || 800;
-            const height = container.clientHeight || 600;
+            if (!container) return;
             
             // 清空容器
             d3.select(container).selectAll('*').remove();
             
+            const width = container.clientWidth || 800;
+            const height = container.clientHeight || 600;
+            
             const svg = d3.select(container)
+                .append('svg')
                 .attr('width', width)
                 .attr('height', height);
                 
-            // 创建节点和链接数据
-            const nodes = analysisData.symbols.map(symbol => ({
-                id: symbol.id,
-                name: symbol.name,
-                type: symbol.type,
-                group: symbol.type
-            }));
+            // 创建节点数据（只包含参与调用关系的符号）
+            const participatingSymbols = new Set();
             
-            const links = analysisData.callRelations.map(call => ({
-                source: analysisData.symbols.find(s => s.name === call.caller)?.id,
-                target: analysisData.symbols.find(s => s.name === call.callee)?.id,
-                type: call.callType
-            })).filter(link => link.source && link.target);
+            // 从调用关系中提取参与的符号
+            analysisData.callRelations.forEach(call => {
+                if (call.caller) {
+                    if (call.caller.id) participatingSymbols.add(call.caller.id);
+                    if (call.caller.name) participatingSymbols.add(call.caller.name);
+                }
+                if (call.callee) {
+                    if (call.callee.id) participatingSymbols.add(call.callee.id);
+                    if (call.callee.name) participatingSymbols.add(call.callee.name);
+                }
+            });
+            
+            // 创建节点映射
+            const nodeMap = new Map();
+            const nodes = [];
+            
+            // 添加所有符号作为节点
+            analysisData.symbols.forEach(symbol => {
+                if (participatingSymbols.has(symbol.id) || participatingSymbols.has(symbol.name)) {
+                    const node = {
+                        id: symbol.id,
+                        name: symbol.name,
+                        type: symbol.type,
+                        group: symbol.type,
+                        fullName: symbol.name + (symbol.type ? ' (' + symbol.type + ')' : '')
+                    };
+                    nodes.push(node);
+                    nodeMap.set(symbol.id, node);
+                    nodeMap.set(symbol.name, node);
+                }
+            });
+            
+            // 如果没有参与调用的符号，添加前20个符号
+            if (nodes.length === 0) {
+                analysisData.symbols.slice(0, 20).forEach(symbol => {
+                    const node = {
+                        id: symbol.id,
+                        name: symbol.name,
+                        type: symbol.type,
+                        group: symbol.type,
+                        fullName: symbol.name + (symbol.type ? ' (' + symbol.type + ')' : '')
+                    };
+                    nodes.push(node);
+                    nodeMap.set(symbol.id, node);
+                    nodeMap.set(symbol.name, node);
+                });
+            }
+            
+            // 创建链接数据
+            const links = [];
+            analysisData.callRelations.forEach(call => {
+                let sourceNode = null;
+                let targetNode = null;
+                
+                // 查找调用者节点
+                if (call.caller) {
+                    if (call.caller.id) {
+                        sourceNode = nodeMap.get(call.caller.id);
+                    }
+                    if (!sourceNode && call.caller.name) {
+                        sourceNode = nodeMap.get(call.caller.name);
+                    }
+                }
+                
+                // 查找被调用者节点
+                if (call.callee) {
+                    if (call.callee.id) {
+                        targetNode = nodeMap.get(call.callee.id);
+                    }
+                    if (!targetNode && call.callee.name) {
+                        targetNode = nodeMap.get(call.callee.name);
+                    }
+                }
+                
+                if (sourceNode && targetNode && sourceNode.id !== targetNode.id) {
+                    links.push({
+                        source: sourceNode.id,
+                        target: targetNode.id,
+                        type: call.callType,
+                        callType: call.callType
+                    });
+                }
+            });
+            
+            console.log('调用图数据: ' + nodes.length + ' 个节点, ' + links.length + ' 个链接');
+            
+            // 如果没有数据，显示提示
+            if (nodes.length === 0) {
+                svg.append('text')
+                    .attr('x', width / 2)
+                    .attr('y', height / 2)
+                    .attr('text-anchor', 'middle')
+                    .attr('font-size', 16)
+                    .text('没有找到调用关系数据');
+                return;
+            }
             
             // 颜色映射
             const color = d3.scaleOrdinal()
-                .domain(['class', 'interface', 'function', 'method', 'property', 'variable'])
-                .range(['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b']);
+                .domain(['class', 'interface', 'function', 'method', 'property', 'variable', 'constructor'])
+                .range(['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#17becf']);
             
             // 创建力导向模拟
             const simulation = d3.forceSimulation(nodes)
-                .force('link', d3.forceLink(links).id(d => d.id))
+                .force('link', d3.forceLink(links).id(d => d.id).distance(100))
                 .force('charge', d3.forceManyBody().strength(-300))
-                .force('center', d3.forceCenter(width / 2, height / 2));
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collision', d3.forceCollide().radius(30));
+            
+            // 添加箭头标记
+            svg.append('defs').append('marker')
+                .attr('id', 'arrowhead')
+                .attr('viewBox', '-0 -5 10 10')
+                .attr('refX', 18)
+                .attr('refY', 0)
+                .attr('orient', 'auto')
+                .attr('markerWidth', 8)
+                .attr('markerHeight', 8)
+                .attr('xoverflow', 'visible')
+                .append('svg:path')
+                .attr('d', 'M 0,-5 L 10 ,0 L 0,5')
+                .attr('fill', '#999')
+                .style('stroke', 'none');
             
             // 添加链接
             const link = svg.append('g')
@@ -786,14 +955,21 @@ export class HtmlFormatter extends BaseFormatter {
                 .join('line')
                 .attr('stroke', '#999')
                 .attr('stroke-opacity', 0.6)
-                .attr('stroke-width', 2);
+                .attr('stroke-width', d => d.type === 'method' ? 3 : 2)
+                .attr('marker-end', 'url(#arrowhead)');
+            
+            // 获取节点大小控制器的值
+            function getNodeSize() {
+                const sizeSlider = document.getElementById('node-size');
+                return sizeSlider ? parseInt(sizeSlider.value) : 10;
+            }
             
             // 添加节点
             const node = svg.append('g')
                 .selectAll('circle')
                 .data(nodes)
                 .join('circle')
-                .attr('r', 8)
+                .attr('r', getNodeSize)
                 .attr('fill', d => color(d.type))
                 .attr('stroke', '#fff')
                 .attr('stroke-width', 2)
@@ -808,23 +984,46 @@ export class HtmlFormatter extends BaseFormatter {
                 .data(nodes)
                 .join('text')
                 .text(d => d.name)
-                .attr('font-size', 12)
+                .attr('font-size', 10)
                 .attr('font-family', 'Arial')
                 .attr('text-anchor', 'middle')
-                .attr('dy', 25);
+                .attr('dy', d => getNodeSize() + 15)
+                .attr('fill', '#333');
             
             // 鼠标事件
             node.on('mouseover', function(event, d) {
-                const nodeInfo = document.getElementById('node-info');
-                nodeInfo.innerHTML = \`
-                    <strong>\${d.name}</strong><br>
-                    类型: \${d.type}<br>
-                    ID: \${d.id}
-                \`;
-                nodeInfo.style.display = 'block';
+                // 高亮相关节点和链接
+                const relatedNodeIds = new Set();
+                relatedNodeIds.add(d.id);
+                
+                links.forEach(link => {
+                    if (link.source.id === d.id || link.target.id === d.id) {
+                        relatedNodeIds.add(link.source.id);
+                        relatedNodeIds.add(link.target.id);
+                    }
+                });
+                
+                node.style('opacity', n => relatedNodeIds.has(n.id) ? 1 : 0.3);
+                link.style('opacity', l => 
+                    (l.source.id === d.id || l.target.id === d.id) ? 1 : 0.1
+                );
+                label.style('opacity', n => relatedNodeIds.has(n.id) ? 1 : 0.3);
+                
             }).on('mouseout', function() {
-                document.getElementById('node-info').style.display = 'none';
+                node.style('opacity', 1);
+                link.style('opacity', 1);
+                label.style('opacity', 1);
             });
+            
+            // 节点大小控制
+            const nodeSizeSlider = document.getElementById('node-size');
+            if (nodeSizeSlider) {
+                nodeSizeSlider.addEventListener('input', function() {
+                    const newSize = parseInt(this.value);
+                    node.attr('r', newSize);
+                    label.attr('dy', newSize + 15);
+                });
+            }
             
             // 更新位置
             simulation.on('tick', () => {
@@ -835,12 +1034,12 @@ export class HtmlFormatter extends BaseFormatter {
                     .attr('y2', d => d.target.y);
                 
                 node
-                    .attr('cx', d => d.x)
-                    .attr('cy', d => d.y);
+                    .attr('cx', d => Math.max(getNodeSize(), Math.min(width - getNodeSize(), d.x)))
+                    .attr('cy', d => Math.max(getNodeSize(), Math.min(height - getNodeSize(), d.y)));
                     
                 label
-                    .attr('x', d => d.x)
-                    .attr('y', d => d.y);
+                    .attr('x', d => Math.max(getNodeSize(), Math.min(width - getNodeSize(), d.x)))
+                    .attr('y', d => Math.max(getNodeSize(), Math.min(height - getNodeSize(), d.y)));
             });
             
             // 拖拽函数
@@ -859,6 +1058,43 @@ export class HtmlFormatter extends BaseFormatter {
                 if (!event.active) simulation.alphaTarget(0);
                 event.subject.fx = null;
                 event.subject.fy = null;
+            }
+            
+            // 布局控制
+            const layoutSelector = document.getElementById('graph-layout');
+            if (layoutSelector) {
+                layoutSelector.addEventListener('change', function() {
+                    const layout = this.value;
+                    simulation.stop();
+                    
+                    if (layout === 'hierarchy') {
+                        // 层次布局
+                        simulation
+                            .force('link', d3.forceLink(links).id(d => d.id).distance(80))
+                            .force('charge', null)
+                            .force('center', d3.forceCenter(width / 2, height / 2))
+                            .force('y', d3.forceY(d => d.type === 'class' ? height * 0.2 : 
+                                                      d.type === 'method' ? height * 0.5 : height * 0.8).strength(0.5));
+                    } else if (layout === 'circular') {
+                        // 环形布局
+                        nodes.forEach((d, i) => {
+                            const angle = (i / nodes.length) * 2 * Math.PI;
+                            const radius = Math.min(width, height) * 0.3;
+                            d.fx = width / 2 + radius * Math.cos(angle);
+                            d.fy = height / 2 + radius * Math.sin(angle);
+                        });
+                        simulation.force('charge', null);
+                    } else {
+                        // 力导向布局（默认）
+                        nodes.forEach(d => { d.fx = null; d.fy = null; });
+                        simulation
+                            .force('link', d3.forceLink(links).id(d => d.id).distance(100))
+                            .force('charge', d3.forceManyBody().strength(-300))
+                            .force('center', d3.forceCenter(width / 2, height / 2));
+                    }
+                    
+                    simulation.alpha(1).restart();
+                });
             }
         }
 
