@@ -6,13 +6,17 @@
 
 const { MultiLanguageAnalyzer } = require('../dist/index');
 const path = require('path');
+const { Utils } = require('../dist/index');
 
 async function testMultiLanguageAnalysis() {
   console.log('🧪 测试多语言分析功能...\n');
 
   try {
+    // 获取项目根目录路径（上级目录）
+    const rootPath = path.resolve(__dirname, '..');
+    
     // 创建分析器实例
-    const analyzer = new MultiLanguageAnalyzer(process.cwd(), {
+    const analyzer = new MultiLanguageAnalyzer(rootPath, {
       includeJavaScript: true,
       includeTypeScript: true,
       analyzeCallChains: true,
@@ -20,9 +24,15 @@ async function testMultiLanguageAnalysis() {
       excludePatterns: ['node_modules/**', 'dist/**', 'test/**']
     });
 
-    // 分析src目录
-    const patterns = ['src/**/*.ts', 'src/**/*.js'];
+    // 先查找文件
+    const patterns = [path.join(rootPath, 'examples/demo-project/src/**/*.{ts,js}')];
     console.log(`📁 分析模式: ${patterns.join(', ')}`);
+    console.log(`📂 项目根目录: ${rootPath}`);
+    
+    // 使用Utils查找文件
+    const files = await Utils.findFiles(patterns, ['node_modules/**', 'dist/**']);
+    console.log(`🔍 找到文件: ${files.length}个`);
+    files.forEach(file => console.log(`  - ${file}`));
     
     const result = await analyzer.analyze(patterns);
 

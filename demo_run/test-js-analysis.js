@@ -11,8 +11,11 @@ async function testJavaScriptAnalysis() {
   console.log('🟨 测试JavaScript文件分析功能...\n');
 
   try {
+    // 获取项目根目录路径（上级目录）
+    const rootPath = path.resolve(__dirname, '..');
+    
     // 创建分析器实例，只分析JavaScript文件
-    const analyzer = new MultiLanguageAnalyzer(process.cwd(), {
+    const analyzer = new MultiLanguageAnalyzer(rootPath, {
       includeJavaScript: true,
       includeTypeScript: false,  // 只分析JavaScript
       analyzeCallChains: true,
@@ -20,9 +23,13 @@ async function testJavaScriptAnalysis() {
       excludePatterns: ['node_modules/**', 'dist/**']
     });
 
-    // 分析test目录中的JavaScript文件
-    const patterns = ['src/test/**/*.js'];
+    // 分析examples目录中的JavaScript文件
+    const patterns = [
+      path.join(rootPath, 'examples/demo-project/src/**/*.js'), 
+      path.join(rootPath, 'examples/demo-project/config/**/*.js')
+    ];
     console.log(`📁 分析模式: ${patterns.join(', ')}`);
+    console.log(`📂 项目根目录: ${rootPath}`);
     
     const result = await analyzer.analyze(patterns);
 

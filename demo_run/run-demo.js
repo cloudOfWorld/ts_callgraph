@@ -11,8 +11,8 @@ const fs = require('fs');
 
 class DemoRunner {
   constructor() {
-    this.cliPath = 'node dist/cli/index.js';
-    this.demoPath = 'examples/demo-project';
+    this.cliPath = 'node ../dist/cli/index.js';  // 更新CLI路径
+    this.demoPath = '../examples/demo-project';    // 更新demo路径
     this.outputDir = 'demo-outputs';
     
     // 确保输出目录存在
