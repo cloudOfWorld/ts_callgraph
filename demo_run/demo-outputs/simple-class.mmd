@@ -1,0 +1,232 @@
+```mermaid
+classDiagram
+  %% Generated: 2025-09-09T13:17:41.063Z
+
+  %% File: index
+  class ApplicationBootstrap {
+    -isInitialized boolean
+    -services { userServic...
+    +initialize() Promise
+    -validateConfiguration() Promise
+    -initializeServices() Promise
+    -setupEventListeners() void
+    -performSystemChecks() Promise
+    -checkNetworkConnectivity() Promise
+    -checkDependencies() Promise
+    +start() Promise
+  }
+
+  %% File: helpers
+  class StringUtils {
+    +generateId()$ string
+    +isValidId()$ boolean
+    +toCamelCase()$ string
+    +toSnakeCase()$ string
+    +truncate()$ string
+    +capitalize()$ string
+  }
+  class DateUtils {
+    +format()$ string
+    +fromNow()$ string
+    +isValid()$ boolean
+    +add()$ Date
+    +diff()$ number
+    +getTodayRange()$ { start: Dat...
+  }
+  class ObjectUtils {
+    +deepClone()$ T
+    +merge()$ T
+    +pick()$ Pick
+    +omit()$ Omit
+    +isEmpty()$ boolean
+    +get()$ T
+    +set()$ T
+  }
+  class ArrayUtils {
+    +unique()$ T[]
+    +uniqueBy()$ T[]
+    +groupBy()$ Record
+    +sortBy()$ T[]
+    +chunk()$ T[][]
+    +flatten()$ T[]
+    +flattenDeep()$ T[]
+  }
+  class ValidationUtils {
+    +isEmail()$ boolean
+    +isPhoneNumber()$ boolean
+    +isStrongPassword()$ boolean
+    +isURL()$ boolean
+    +validateUser()$ { isValid: b...
+  }
+  class ResponseUtils {
+    +success()$ ApiResponse
+    +error()$ ApiResponse
+    +paginated()$ ApiResponse
+  }
+  class AsyncUtils {
+    +delay()$ Promise
+    +retry()$ Promise
+    +concurrent()$ Promise
+  }
+
+  %% File: index
+  class User {
+    <<interface>>
+    +id string
+    +name string
+    +email string
+    +age number
+    +roles Role[]
+    +createdAt Date
+  }
+  class Role {
+    <<interface>>
+    +id string
+    +name string
+    +permissions Permission[]
+  }
+  class Permission {
+    <<interface>>
+    +id string
+    +action string
+    +resource string
+  }
+  class ApiResponse {
+    <<interface>>
+    +success boolean
+    +data T
+    +error string
+    +message string
+    +timestamp Date
+  }
+  class PaginationParams {
+    <<interface>>
+    +page number
+    +limit number
+    +sortBy string
+    +sortOrder "asc"
+  }
+  class PaginatedResult {
+    <<interface>>
+    +items T[]
+    +total number
+    +page number
+    +limit number
+    +totalPages number
+  }
+  class DatabaseConfig {
+    <<interface>>
+    +host string
+    +port number
+    +username string
+    +password string
+    +database string
+  }
+  class AppConfig {
+    <<interface>>
+    +port number
+    +env "development"
+    +database DatabaseConfig
+    +jwtSecret string
+    +corsOrigins string[]
+  }
+
+  %% File: user-service
+  class IBaseService {
+    <<interface>>
+    +findById() Promise
+    +findAll() Promise
+    +create() Promise
+    +update() Promise
+    +delete() Promise
+  }
+  class IUserService {
+    <<interface>>
+    +findByEmail() Promise
+    +findByRole() Promise
+    +assignRole() Promise
+    +removeRole() Promise
+    +changePassword() Promise
+  }
+  class BaseService {
+    #httpClient AxiosInstance
+    #baseUrl string
+    #resourceName string
+    -setupInterceptors() void
+    #getResourceUrl() string
+    #handleResponse() ApiResponse
+    #handleError() never
+    +findById()* Promise
+    +findAll()* Promise
+    +create()* Promise
+    +update()* Promise
+  }
+  class RoleService {
+    +findById() Promise
+    +findAll() Promise
+    +create() Promise
+    +update() Promise
+    +delete() Promise
+    +addPermission() Promise
+    +removePermission() Promise
+  }
+  class UserService {
+    -roleService RoleService
+    -userCache Map
+    -cacheTimeout number
+    -setupCacheCleanup() void
+    -getCachedUser() any
+    -cacheUser() void
+    +findById() Promise
+    +findByEmail() Promise
+    +findAll() Promise
+    +create() Promise
+    +update() Promise
+  }
+
+  %% File: server
+  class ExpressApp {
+    +setupMiddleware() void
+    +setupRoutes() void
+    +createApiRouter() Router
+    +createUserRouter() Router
+    +createRoleRouter() Router
+    +createAuthRouter() Router
+    +setupErrorHandling() void
+    +initializeTestData() void
+  }
+
+  %% File: database
+  class DatabaseManager {
+    +initialize() any
+    +query() Promise
+    +transaction() Promise
+    +batchInsert() Promise
+    +close() Promise
+    +delay() Promise
+    +getStatus() { isConnecte...
+  }
+  class QueryBuilder {
+    +select() this
+    +where() this
+    +whereIn() this
+    +join() this
+    +leftJoin() this
+    +orderBy() this
+    +limit() this
+    +offset() this
+  }
+  class MigrationRunner {
+    +addMigration() this
+    +runMigrations() Promise
+    +createMigrationTable() Promise
+    +getExecutedMigrations() Promise
+  }
+
+  %% Relationships
+  EventEmitter <|-- BaseService
+  IBaseService <|.. BaseService
+  BaseService <|-- RoleService
+  BaseService <|-- UserService
+  IUserService <|.. UserService
+```

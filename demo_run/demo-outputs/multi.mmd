@@ -1,0 +1,575 @@
+```mermaid
+graph TB
+  %% TypeScript Call Graph
+  %% Generated: 2025-09-09T13:17:41.904Z
+  %% Files: 6
+  %% Symbols: 252
+
+  %% Node Definitions
+  config_index_ts_34_7["config: any"]
+  config_index_ts_34_7:::property
+  ApplicationBootstrap_index_ts_46_1["ApplicationBootstrap"]
+  ApplicationBootstrap_index_ts_46_1:::class
+  error_index_ts_82_14["error: unknown"]
+  error_index_ts_82_14:::property
+  requiredEnvVars_index_ts_100_13["requiredEnvVars: string[]"]
+  requiredEnvVars_index_ts_100_13:::property
+  missingVars_index_ts_101_13["missingVars: string[]"]
+  missingVars_index_ts_101_13:::property
+  error_index_ts_109_14["error: unknown"]
+  error_index_ts_109_14:::property
+  error_index_ts_149_14["error: unknown"]
+  error_index_ts_149_14:::property
+  memoryUsage_index_ts_200_13["memoryUsage: MemoryUsage"]
+  memoryUsage_index_ts_200_13:::property
+  memoryMB_index_ts_201_13["memoryMB: number"]
+  memoryMB_index_ts_201_13:::property
+  error_index_ts_215_14["error: unknown"]
+  error_index_ts_215_14:::property
+  error_index_ts_235_14["error: unknown"]
+  error_index_ts_235_14:::property
+  dbStatus_index_ts_246_13["dbStatus: any"]
+  dbStatus_index_ts_246_13:::property
+  error_index_ts_252_14["error: unknown"]
+  error_index_ts_252_14:::property
+  error_index_ts_278_14["error: unknown"]
+  error_index_ts_278_14:::property
+  stats_index_ts_297_15["stats: any"]
+  stats_index_ts_297_15:::property
+  error_index_ts_299_16["error: unknown"]
+  error_index_ts_299_16:::property
+  appConfig_index_ts_311_11["appConfig: any"]
+  appConfig_index_ts_311_11:::property
+  status_index_ts_312_11["status: any"]
+  status_index_ts_312_11:::property
+  serverStatus_index_ts_331_13["serverStatus: any"]
+  serverStatus_index_ts_331_13:::property
+  dbStatus_index_ts_332_13["dbStatus: any"]
+  dbStatus_index_ts_332_13:::property
+  userStats_index_ts_333_13["userStats: any"]
+  userStats_index_ts_333_13:::property
+  cacheStats_index_ts_334_13["cacheStats: any"]
+  cacheStats_index_ts_334_13:::property
+  error_index_ts_349_14["error: unknown"]
+  error_index_ts_349_14:::property
+  error_index_ts_373_14["error: unknown"]
+  error_index_ts_373_14:::property
+  demonstrateUtilities_index_ts_406_1["demonstrateUtilities(): Promise<void>"]
+  demonstrateUtilities_index_ts_406_1:::function
+  id_index_ts_410_9["id: any"]
+  id_index_ts_410_9:::property
+  now_index_ts_415_9["now: Date"]
+  now_index_ts_415_9:::property
+  testArray_index_ts_420_9["testArray: number[]"]
+  testArray_index_ts_420_9:::property
+  testObj_index_ts_425_9["testObj"]
+  testObj_index_ts_425_9:::property
+  testObj_index_ts_425_19["testObj"]
+  clonedObj_index_ts_426_9["clonedObj: any"]
+  clonedObj_index_ts_426_9:::property
+  emailValid_index_ts_430_9["emailValid: any"]
+  emailValid_index_ts_430_9:::property
+  main_index_ts_442_1["main(): Promise<void>"]
+  main_index_ts_442_1:::function
+  bootstrap_index_ts_450_11["bootstrap"]
+  bootstrap_index_ts_450_11:::property
+  error_index_ts_456_12["error: unknown"]
+  error_index_ts_456_12:::property
+  services_index_ts_475_14["services"]
+  services_index_ts_475_14:::property
+  services_index_ts_475_25["services"]
+  appConfig_index_ts_481_14["appConfig: any"]
+  appConfig_index_ts_481_14:::property
+  StringUtils_helpers_ts_14_1["StringUtils"]
+  StringUtils_helpers_ts_14_1:::class
+  DateUtils_helpers_ts_61_1["DateUtils"]
+  DateUtils_helpers_ts_61_1:::class
+  today_helpers_ts_101_11["today: Moment"]
+  today_helpers_ts_101_11:::property
+  ObjectUtils_helpers_ts_112_1["ObjectUtils"]
+  ObjectUtils_helpers_ts_112_1:::class
+  ArrayUtils_helpers_ts_166_1["ArrayUtils"]
+  ArrayUtils_helpers_ts_166_1:::class
+  ValidationUtils_helpers_ts_220_1["ValidationUtils"]
+  ValidationUtils_helpers_ts_220_1:::class
+  emailRegex_helpers_ts_225_11["emailRegex: RegExp"]
+  emailRegex_helpers_ts_225_11:::property
+  phoneRegex_helpers_ts_233_11["phoneRegex: RegExp"]
+  phoneRegex_helpers_ts_233_11:::property
+  strongRegex_helpers_ts_242_11["strongRegex: RegExp"]
+  strongRegex_helpers_ts_242_11:::property
+  errors_helpers_ts_262_11["errors: string[]"]
+  errors_helpers_ts_262_11:::property
+  ResponseUtils_helpers_ts_286_1["ResponseUtils"]
+  ResponseUtils_helpers_ts_286_1:::class
+  totalPages_helpers_ts_319_11["totalPages: number"]
+  totalPages_helpers_ts_319_11:::property
+  AsyncUtils_helpers_ts_334_1["AsyncUtils"]
+  AsyncUtils_helpers_ts_334_1:::class
+  lastError_helpers_ts_350_9["lastError: Error"]
+  lastError_helpers_ts_350_9:::property
+  i_helpers_ts_352_14["i: number"]
+  i_helpers_ts_352_14:::property
+  error_helpers_ts_355_16["error: unknown"]
+  error_helpers_ts_355_16:::property
+  results_helpers_ts_376_11["results: T[]"]
+  results_helpers_ts_376_11:::property
+  executing_helpers_ts_377_11["executing: Promise<void>[]"]
+  executing_helpers_ts_377_11:::property
+  task_helpers_ts_379_16["task: () => Promise<T>"]
+  task_helpers_ts_379_16:::property
+  promise_helpers_ts_380_13["promise: Promise<void>"]
+  promise_helpers_ts_380_13:::property
+  User_index_ts_4_1["User"]
+  User_index_ts_4_1:::interface
+  Role_index_ts_14_1["Role"]
+  Role_index_ts_14_1:::interface
+  Permission_index_ts_20_1["Permission"]
+  Permission_index_ts_20_1:::interface
+  ApiResponse_index_ts_29_1["ApiResponse"]
+  ApiResponse_index_ts_29_1:::interface
+  PaginationParams_index_ts_40_1["PaginationParams"]
+  PaginationParams_index_ts_40_1:::interface
+  PaginatedResult_index_ts_47_1["PaginatedResult"]
+  PaginatedResult_index_ts_47_1:::interface
+  DatabaseConfig_index_ts_58_1["DatabaseConfig"]
+  DatabaseConfig_index_ts_58_1:::interface
+  AppConfig_index_ts_66_1["AppConfig"]
+  AppConfig_index_ts_66_1:::interface
+  UserEvent_index_ts_77_1["UserEvent"]
+  Optional_index_ts_85_1["Optional"]
+  RequireKeys_index_ts_86_1["RequireKeys"]
+  IBaseService_user_service_ts_33_1["IBaseService"]
+  IBaseService_user_service_ts_33_1:::interface
+  IUserService_user_service_ts_44_1["IUserService"]
+  IUserService_user_service_ts_44_1:::interface
+  BaseService_user_service_ts_55_1["BaseService"]
+  BaseService_user_service_ts_55_1:::class
+  message_user_service_ts_136_11["message: any"]
+  message_user_service_ts_136_11:::property
+  statusCode_user_service_ts_137_11["statusCode: any"]
+  statusCode_user_service_ts_137_11:::property
+  RoleService_user_service_ts_157_1["RoleService"]
+  RoleService_user_service_ts_157_1:::class
+  response_user_service_ts_168_13["response"]
+  response_user_service_ts_168_13:::property
+  result_user_service_ts_169_13["result: ApiResponse<R>"]
+  result_user_service_ts_169_13:::property
+  error_user_service_ts_172_14["error: unknown"]
+  error_user_service_ts_172_14:::property
+  response_user_service_ts_179_13["response"]
+  response_user_service_ts_179_13:::property
+  result_user_service_ts_180_13["result: ApiResponse<R>"]
+  result_user_service_ts_180_13:::property
+  error_user_service_ts_187_14["error: unknown"]
+  error_user_service_ts_187_14:::property
+  roleData_user_service_ts_194_13["roleData: any"]
+  roleData_user_service_ts_194_13:::property
+  roleData_user_service_ts_194_24["roleData"]
+  response_user_service_ts_200_13["response"]
+  response_user_service_ts_200_13:::property
+  result_user_service_ts_201_13["result: ApiResponse<R>"]
+  result_user_service_ts_201_13:::property
+  error_user_service_ts_209_14["error: unknown"]
+  error_user_service_ts_209_14:::property
+  response_user_service_ts_216_13["response"]
+  response_user_service_ts_216_13:::property
+  result_user_service_ts_217_13["result: ApiResponse<R>"]
+  result_user_service_ts_217_13:::property
+  error_user_service_ts_225_14["error: unknown"]
+  error_user_service_ts_225_14:::property
+  error_user_service_ts_235_14["error: unknown"]
+  error_user_service_ts_235_14:::property
+  error_user_service_ts_248_14["error: unknown"]
+  error_user_service_ts_248_14:::property
+  error_user_service_ts_261_14["error: unknown"]
+  error_user_service_ts_261_14:::property
+  UserService_user_service_ts_270_1["UserService"]
+  UserService_user_service_ts_270_1:::class
+  now_user_service_ts_289_13["now: number"]
+  now_user_service_ts_289_13:::property
+  cached_user_service_ts_302_11["cached"]
+  cached_user_service_ts_302_11:::property
+  cachedUser_user_service_ts_322_13["cachedUser: any"]
+  cachedUser_user_service_ts_322_13:::property
+  response_user_service_ts_331_13["response"]
+  response_user_service_ts_331_13:::property
+  result_user_service_ts_332_13["result: ApiResponse<R>"]
+  result_user_service_ts_332_13:::property
+  error_user_service_ts_340_14["error: unknown"]
+  error_user_service_ts_340_14:::property
+  response_user_service_ts_351_13["response"]
+  response_user_service_ts_351_13:::property
+  result_user_service_ts_354_13["result: ApiResponse<R>"]
+  result_user_service_ts_354_13:::property
+  error_user_service_ts_362_14["error: unknown"]
+  error_user_service_ts_362_14:::property
+  response_user_service_ts_369_13["response"]
+  response_user_service_ts_369_13:::property
+  result_user_service_ts_370_13["result: ApiResponse<R>"]
+  result_user_service_ts_370_13:::property
+  error_user_service_ts_380_14["error: unknown"]
+  error_user_service_ts_380_14:::property
+  validation_user_service_ts_388_13["validation: any"]
+  validation_user_service_ts_388_13:::property
+  user_user_service_ts_393_13["user: User"]
+  user_user_service_ts_393_13:::property
+  response_user_service_ts_400_13["response"]
+  response_user_service_ts_400_13:::property
+  result_user_service_ts_401_13["result: ApiResponse<R>"]
+  result_user_service_ts_401_13:::property
+  error_user_service_ts_411_14["error: unknown"]
+  error_user_service_ts_411_14:::property
+  updateData_user_service_ts_423_13["updateData: any"]
+  updateData_user_service_ts_423_13:::property
+  updateData_user_service_ts_423_26["updateData"]
+  response_user_service_ts_428_13["response"]
+  response_user_service_ts_428_13:::property
+  result_user_service_ts_429_13["result: ApiResponse<R>"]
+  result_user_service_ts_429_13:::property
+  error_user_service_ts_441_14["error: unknown"]
+  error_user_service_ts_441_14:::property
+  error_user_service_ts_455_14["error: unknown"]
+  error_user_service_ts_455_14:::property
+  response_user_service_ts_462_13["response"]
+  response_user_service_ts_462_13:::property
+  result_user_service_ts_465_13["result: ApiResponse<R>"]
+  result_user_service_ts_465_13:::property
+  error_user_service_ts_475_14["error: unknown"]
+  error_user_service_ts_475_14:::property
+  error_user_service_ts_489_14["error: unknown"]
+  error_user_service_ts_489_14:::property
+  error_user_service_ts_503_14["error: unknown"]
+  error_user_service_ts_503_14:::property
+  error_user_service_ts_521_14["error: unknown"]
+  error_user_service_ts_521_14:::property
+  validUsers_user_service_ts_531_13["validUsers: any[]"]
+  validUsers_user_service_ts_531_13:::property
+  errors_user_service_ts_532_13["errors: any[]"]
+  errors_user_service_ts_532_13:::property
+  userData_user_service_ts_534_18["userData: User"]
+  userData_user_service_ts_534_18:::property
+  validation_user_service_ts_535_15["validation: any"]
+  validation_user_service_ts_535_15:::property
+  chunks_user_service_ts_552_13["chunks: any"]
+  chunks_user_service_ts_552_13:::property
+  results_user_service_ts_553_13["results: any[]"]
+  results_user_service_ts_553_13:::property
+  chunk_user_service_ts_555_18["chunk: any"]
+  chunk_user_service_ts_555_18:::property
+  response_user_service_ts_556_15["response"]
+  response_user_service_ts_556_15:::property
+  result_user_service_ts_557_15["result: ApiResponse<R>"]
+  result_user_service_ts_557_15:::property
+  error_user_service_ts_567_14["error: unknown"]
+  error_user_service_ts_567_14:::property
+  response_user_service_ts_577_13["response"]
+  response_user_service_ts_577_13:::property
+  result_user_service_ts_580_13["result: ApiResponse<R>"]
+  result_user_service_ts_580_13:::property
+  error_user_service_ts_587_14["error: unknown"]
+  error_user_service_ts_587_14:::property
+  response_user_service_ts_597_13["response"]
+  response_user_service_ts_597_13:::property
+  result_user_service_ts_598_13["result: ApiResponse<R>"]
+  result_user_service_ts_598_13:::property
+  error_user_service_ts_601_14["error: unknown"]
+  error_user_service_ts_601_14:::property
+  createUserService_user_service_ts_625_1["createUserService(baseUrl)"]
+  createUserService_user_service_ts_625_1:::function
+  createRoleService_user_service_ts_629_1["createRoleService(baseUrl)"]
+  createRoleService_user_service_ts_629_1:::function
+  userService_user_service_ts_634_14["userService: UserService"]
+  userService_user_service_ts_634_14:::property
+  roleService_user_service_ts_635_14["roleService: RoleService"]
+  roleService_user_service_ts_635_14:::property
+  express_server_js_6_7["express: typeof e"]
+  express_server_js_6_7:::property
+  cors_server_js_7_7["cors: any"]
+  cors_server_js_7_7:::property
+  helmet_server_js_8_7["helmet: any"]
+  helmet_server_js_8_7:::property
+  morgan_server_js_9_7["morgan: any"]
+  morgan_server_js_9_7:::property
+  rateLimit_server_js_10_7["rateLimit: any"]
+  rateLimit_server_js_10_7:::property
+  server_js_12_7["_: LoDashStatic"]
+  server_js_12_7:::property
+  config_server_js_15_7["config"]
+  config_server_js_15_7:::property
+  ExpressApp_server_js_21_1["ExpressApp"]
+  ExpressApp_server_js_21_1:::class
+  limiter_server_js_65_11["limiter: any"]
+  limiter_server_js_65_11:::property
+  duration_server_js_88_15["duration: number"]
+  duration_server_js_88_15:::property
+  router_server_js_136_11["router: Router"]
+  router_server_js_136_11:::property
+  router_server_js_154_11["router: Router"]
+  router_server_js_154_11:::property
+  users_server_js_161_15["users: any[]"]
+  users_server_js_161_15:::property
+  sortedUsers_server_js_162_15["sortedUsers: any[]"]
+  sortedUsers_server_js_162_15:::property
+  startIndex_server_js_164_15["startIndex: number"]
+  startIndex_server_js_164_15:::property
+  endIndex_server_js_165_15["endIndex: number"]
+  endIndex_server_js_165_15:::property
+  paginatedUsers_server_js_166_15["paginatedUsers: any[]"]
+  paginatedUsers_server_js_166_15:::property
+  error_server_js_178_16["error: unknown"]
+  error_server_js_178_16:::property
+  user_server_js_187_15["user: any"]
+  user_server_js_187_15:::property
+  error_server_js_200_16["error: unknown"]
+  error_server_js_200_16:::property
+  userData_server_js_208_15["userData: any"]
+  userData_server_js_208_15:::property
+  validation_server_js_211_15["validation"]
+  validation_server_js_211_15:::property
+  user_server_js_220_15["user: any"]
+  user_server_js_220_15:::property
+  user_server_js_220_22["user"]
+  error_server_js_235_16["error: unknown"]
+  error_server_js_235_16:::property
+  usersData_server_js_243_15["usersData: any"]
+  usersData_server_js_243_15:::property
+  createdUsers_server_js_252_15["createdUsers: any[]"]
+  createdUsers_server_js_252_15:::property
+  errors_server_js_253_15["errors: any[]"]
+  errors_server_js_253_15:::property
+  userData_server_js_255_20["userData: any"]
+  userData_server_js_255_20:::property
+  validation_server_js_256_17["validation"]
+  validation_server_js_256_17:::property
+  user_server_js_258_19["user: any"]
+  user_server_js_258_19:::property
+  user_server_js_258_26["user"]
+  error_server_js_282_16["error: unknown"]
+  error_server_js_282_16:::property
+  updateData_server_js_291_15["updateData: any"]
+  updateData_server_js_291_15:::property
+  user_server_js_293_15["user: any"]
+  user_server_js_293_15:::property
+  validation_server_js_302_15["validation"]
+  validation_server_js_302_15:::property
+  updatedUser_server_js_311_15["updatedUser: any"]
+  updatedUser_server_js_311_15:::property
+  updatedUser_server_js_311_29["updatedUser"]
+  error_server_js_324_16["error: unknown"]
+  error_server_js_324_16:::property
+  error_server_js_347_16["error: unknown"]
+  error_server_js_347_16:::property
+  users_server_js_364_15["users: any[]"]
+  users_server_js_364_15:::property
+  filteredUsers_server_js_365_15["filteredUsers: any[]"]
+  filteredUsers_server_js_365_15:::property
+  startIndex_server_js_370_15["startIndex: number"]
+  startIndex_server_js_370_15:::property
+  endIndex_server_js_371_15["endIndex: number"]
+  endIndex_server_js_371_15:::property
+  paginatedUsers_server_js_372_15["paginatedUsers: any[]"]
+  paginatedUsers_server_js_372_15:::property
+  error_server_js_384_16["error: unknown"]
+  error_server_js_384_16:::property
+  users_server_js_392_15["users: any[]"]
+  users_server_js_392_15:::property
+  now_server_js_393_15["now: Date"]
+  now_server_js_393_15:::property
+  thirtyDaysAgo_server_js_394_15["thirtyDaysAgo: Date"]
+  thirtyDaysAgo_server_js_394_15:::property
+  statistics_server_js_396_15["statistics"]
+  statistics_server_js_396_15:::property
+  statistics_server_js_396_28["statistics"]
+  error_server_js_407_16["error: unknown"]
+  error_server_js_407_16:::property
+  router_server_js_419_11["router: Router"]
+  router_server_js_419_11:::property
+  roles_server_js_423_13["roles: any[]"]
+  roles_server_js_423_13:::property
+  roleData_server_js_432_13["roleData: any"]
+  roleData_server_js_432_13:::property
+  role_server_js_433_13["role: any"]
+  role_server_js_433_13:::property
+  role_server_js_433_20["role"]
+  router_server_js_455_11["router: Router"]
+  router_server_js_455_11:::property
+  user_server_js_470_15["user: any"]
+  user_server_js_470_15:::property
+  session_server_js_479_15["session"]
+  session_server_js_479_15:::property
+  session_server_js_479_25["session"]
+  error_server_js_496_16["error: unknown"]
+  error_server_js_496_16:::property
+  adminRole_server_js_549_11["adminRole"]
+  adminRole_server_js_549_11:::property
+  adminRole_server_js_549_23["adminRole"]
+  userRole_server_js_560_11["userRole"]
+  userRole_server_js_560_11:::property
+  userRole_server_js_560_22["userRole"]
+  testUsers_server_js_574_11["testUsers"]
+  testUsers_server_js_574_11:::property
+  user_server_js_596_13["user"]
+  user_server_js_596_13:::property
+  user_server_js_596_20["user"]
+  errors_server_js_612_11["errors: any[]"]
+  errors_server_js_612_11:::property
+  error_server_js_672_14["error: unknown"]
+  error_server_js_672_14:::property
+  app_server_js_724_7["app: ExpressApp"]
+  app_server_js_724_7:::property
+  database_js_6_7["_: LoDashStatic"]
+  database_js_6_7:::property
+  config_database_js_8_7["config"]
+  config_database_js_8_7:::property
+  DatabaseManager_database_js_13_1["DatabaseManager"]
+  DatabaseManager_database_js_13_1:::class
+  client_database_js_38_13["client: any"]
+  client_database_js_38_13:::property
+  error_database_js_47_14["error: unknown"]
+  error_database_js_47_14:::property
+  client_database_js_69_11["client: any"]
+  client_database_js_69_11:::property
+  result_database_js_71_13["result: any"]
+  result_database_js_71_13:::property
+  error_database_js_73_14["error: unknown"]
+  error_database_js_73_14:::property
+  client_database_js_89_11["client: any"]
+  client_database_js_89_11:::property
+  result_database_js_92_13["result: any"]
+  result_database_js_92_13:::property
+  error_database_js_95_14["error: unknown"]
+  error_database_js_95_14:::property
+  chunks_database_js_111_11["chunks: any[][]"]
+  chunks_database_js_111_11:::property
+  results_database_js_112_11["results: any[]"]
+  results_database_js_112_11:::property
+  chunk_database_js_114_16["chunk: any[]"]
+  chunk_database_js_114_16:::property
+  values_database_js_115_13["values: any[]"]
+  values_database_js_115_13:::property
+  placeholders_database_js_116_13["placeholders: any[]"]
+  placeholders_database_js_116_13:::property
+  paramIndex_database_js_117_11["paramIndex: number"]
+  paramIndex_database_js_117_11:::property
+  record_database_js_119_18["record: any"]
+  record_database_js_119_18:::property
+  keys_database_js_120_15["keys: string[]"]
+  keys_database_js_120_15:::property
+  recordPlaceholders_database_js_121_15["recordPlaceholders: string[]"]
+  recordPlaceholders_database_js_121_15:::property
+  keys_database_js_126_13["keys: string[]"]
+  keys_database_js_126_13:::property
+  sql_database_js_127_13["sql: string"]
+  sql_database_js_127_13:::property
+  result_database_js_129_13["result: any"]
+  result_database_js_129_13:::property
+  QueryBuilder_database_js_170_1["QueryBuilder"]
+  QueryBuilder_database_js_170_1:::class
+  placeholders_database_js_217_11["placeholders: string[]"]
+  placeholders_database_js_217_11:::property
+  offset_database_js_267_11["offset: number"]
+  offset_database_js_267_11:::property
+  sql_database_js_275_9["sql: string"]
+  sql_database_js_275_9:::property
+  MigrationRunner_database_js_312_1["MigrationRunner"]
+  MigrationRunner_database_js_312_1:::class
+  executedMigrations_database_js_338_11["executedMigrations: any"]
+  executedMigrations_database_js_338_11:::property
+  pendingMigrations_database_js_339_11["pendingMigrations: any[]"]
+  pendingMigrations_database_js_339_11:::property
+  migration_database_js_345_16["migration: any"]
+  migration_database_js_345_16:::property
+  error_database_js_358_16["error: unknown"]
+  error_database_js_358_16:::property
+  createTableSQL_database_js_369_11["createTableSQL"]
+  createTableSQL_database_js_369_11:::property
+  result_database_js_385_13["result: any"]
+  result_database_js_385_13:::property
+  error_database_js_387_14["error: unknown"]
+  error_database_js_387_14:::property
+  dbManager_database_js_394_7["dbManager: DatabaseManager"]
+  dbManager_database_js_394_7:::property
+  createQueryBuilder_database_js_397_1["createQueryBuilder(tableName)"]
+  createQueryBuilder_database_js_397_1:::function
+  createMigrationRunner_database_js_401_1["createMigrationRunner(): MigrationRunner"]
+  createMigrationRunner_database_js_401_1:::function
+
+  %% Call Relations
+  main_index_ts_442_1 -->|invokes| demonstrateUtilities_index_ts_406_1
+  main_index_ts_442_1 -->|new| ApplicationBootstrap_index_ts_46_1
+  main_index_ts_442_1 -->|calls| error_index_ts_82_14
+  createUserService_user_service_ts_625_1 -->|new| UserService_user_service_ts_270_1
+  createRoleService_user_service_ts_629_1 -->|new| RoleService_user_service_ts_157_1
+  createQueryBuilder_database_js_397_1 -->|new| QueryBuilder_database_js_170_1
+  createMigrationRunner_database_js_401_1 -->|new| MigrationRunner_database_js_312_1
+
+  %% Import Relations
+  file_index[("index")]:::file
+  file_dotenv[("dotenv")]:::file
+  file_path[("path")]:::file
+  file_index[("index")]:::file
+  file_helpers[("helpers")]:::file
+  file_user_service[("user-service")]:::file
+  file_UserManagement[("UserManagement")]:::file
+  file_helpers[("helpers")]:::file
+  file_uuid[("uuid")]:::file
+  file_moment[("moment")]:::file
+  file_lodash[("lodash")]:::file
+  file_user_service[("user-service")]:::file
+  file_events[("events")]:::file
+  file_axios[("axios")]:::file
+  file_index -.|*|.-> file_dotenv
+  file_index -.|*|.-> file_path
+  file_index -.|named|.-> file_helpers
+  file_index -.|named|.-> file_helpers
+  file_index -.|named|.-> file_helpers
+  file_index -.|named|.-> file_helpers
+  file_index -.|named|.-> file_helpers
+  file_index -.|named|.-> file_helpers
+  file_index -.|named|.-> file_helpers
+  file_index -.|named|.-> file_user_service
+  file_index -.|named|.-> file_user_service
+  file_index -.|named|.-> file_user_service
+  file_index -.|named|.-> file_user_service
+  file_index -.|named|.-> file_user_service
+  file_index -.|named|.-> file_user_service
+  file_index -.|named|.-> file_UserManagement
+  file_index -.|named|.-> file_UserManagement
+  file_helpers -.|named|.-> file_uuid
+  file_helpers -.|named|.-> file_uuid
+  file_helpers -.|default|.-> file_moment
+  file_helpers -.|default|.-> file_lodash
+  file_helpers -.|named|.-> file_index
+  file_helpers -.|named|.-> file_index
+  file_helpers -.|named|.-> file_index
+  file_helpers -.|named|.-> file_index
+  file_user_service -.|named|.-> file_events
+  file_user_service -.|default|.-> file_axios
+  file_user_service -.|named|.-> file_axios
+  file_user_service -.|default|.-> file_lodash
+  file_user_service -.|named|.-> file_index
+  file_user_service -.|named|.-> file_index
+  file_user_service -.|named|.-> file_index
+  file_user_service -.|named|.-> file_index
+  file_user_service -.|named|.-> file_index
+  file_user_service -.|named|.-> file_index
+  file_user_service -.|named|.-> file_index
+  file_user_service -.|named|.-> file_index
+  file_user_service -.|named|.-> file_helpers
+  file_user_service -.|named|.-> file_helpers
+  file_user_service -.|named|.-> file_helpers
+  file_user_service -.|named|.-> file_helpers
+  file_user_service -.|named|.-> file_helpers
+  file_user_service -.|named|.-> file_helpers
+  file_user_service -.|named|.-> file_helpers
+
+  %% Styles
+classDef class fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+classDef interface fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+classDef function fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+classDef method fill:#fff3e0,stroke:#e65100,stroke-width:2px
+classDef property fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+classDef constructor fill:#f1f8e9,stroke:#33691e,stroke-width:2px
+classDef file fill:#f5f5f5,stroke:#424242,stroke-width:1px
+```

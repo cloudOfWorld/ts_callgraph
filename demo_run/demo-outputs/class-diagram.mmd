@@ -1,0 +1,267 @@
+```mermaid
+classDiagram
+  %% Generated: 2025-09-09T13:17:40.223Z
+
+  %% File: index
+  class ApplicationBootstrap {
+    -isInitialized boolean
+    -services { userService: UserService;...
+    +initialize() Promise~void~
+    -validateConfiguration() Promise~void~
+    -initializeServices() Promise~void~
+    -setupEventListeners() void
+    -performSystemChecks() Promise~void~
+    -checkNetworkConnectivity() Promise~void~
+    -checkDependencies() Promise~void~
+    +start() Promise~void~
+    -startBackgroundTasks() void
+    -displayStartupInfo() void
+    -generateStatistics() Promise~any~
+    -gracefulShutdown(exitCode) Promise~void~
+    +getServices() { userService: UserService;...
+    +getApplicationStatus() { initialized: boolean; ser...
+    +constructor()
+  }
+
+  %% File: helpers
+  class StringUtils {
+    +generateId$() string
+    +isValidId$(id) boolean
+    +toCamelCase$(str) string
+    +toSnakeCase$(str) string
+    +truncate$(str, length) string
+    +capitalize$(str) string
+  }
+  class DateUtils {
+    +format$(date, format) string
+    +fromNow$(date) string
+    +isValid$(date) boolean
+    +add$(date, amount, unit) Date
+    +diff$(date1, date2, unit) number
+    +getTodayRange$() { start: Date; end: Date; }
+  }
+  class ObjectUtils {
+    +deepClone$(obj) T
+    +merge$(objects) T
+    +pick$(obj, keys) Pick<T, K>
+    +omit$(obj, keys) Omit<T, K>
+    +isEmpty$(obj) boolean
+    +get$(obj, path, defaultValue) T
+    +set$(obj, path, value) T
+  }
+  class ArrayUtils {
+    +unique$(array) T[]
+    +uniqueBy$(array, iteratee) T[]
+    +groupBy$(array, iteratee) Record<string, T[]>
+    +sortBy$(array, iteratees) T[]
+    +chunk$(array, size) T[][]
+    +flatten$(array) T[]
+    +flattenDeep$(array) T[]
+  }
+  class ValidationUtils {
+    +isEmail$(email) boolean
+    +isPhoneNumber$(phone) boolean
+    +isStrongPassword$(password) boolean
+    +isURL$(url) boolean
+    +validateUser$(userData) { isValid: boolean; errors:...
+  }
+  class ResponseUtils {
+    +success$(data, message) ApiResponse<T>
+    +error$(error, message) ApiResponse
+    +paginated$(items, total, params) ApiResponse<PaginatedResult...
+  }
+  class AsyncUtils {
+    +delay$(ms) Promise~void~
+    +retry$(fn, maxRetries, delayMs) Promise~T~
+    +concurrent$(tasks, concurrency) Promise~T[]~
+  }
+
+  %% File: index
+  class User {
+    <<interface>>
+    +id string
+    +name string
+    +email string
+    +age number | undefined
+    +roles Role[]
+    +createdAt Date
+    +updatedAt Date | undefined
+  }
+  class Role {
+    <<interface>>
+    +id string
+    +name string
+    +permissions Permission[]
+  }
+  class Permission {
+    <<interface>>
+    +id string
+    +action string
+    +resource string
+  }
+  class ApiResponse {
+    <<interface>>
+    +success boolean
+    +data T | undefined
+    +error string | undefined
+    +message string | undefined
+    +timestamp Date
+  }
+  class PaginationParams {
+    <<interface>>
+    +page number
+    +limit number
+    +sortBy string | undefined
+    +sortOrder "asc"
+  }
+  class PaginatedResult {
+    <<interface>>
+    +items T[]
+    +total number
+    +page number
+    +limit number
+    +totalPages number
+  }
+  class DatabaseConfig {
+    <<interface>>
+    +host string
+    +port number
+    +username string
+    +password string
+    +database string
+  }
+  class AppConfig {
+    <<interface>>
+    +port number
+    +env "development"
+    +database DatabaseConfig
+    +jwtSecret string
+    +corsOrigins string[]
+  }
+
+  %% File: user-service
+  class IBaseService {
+    <<interface>>
+    +findById(id) Promise~T | null~
+    +findAll(params) Promise~PaginatedResult<T~>
+    +create(data) Promise~T~
+    +update(id, data) Promise~T~
+    +delete(id) Promise~boolean~
+  }
+  class IUserService {
+    <<interface>>
+    +findByEmail(email) Promise~any~
+    +findByRole(roleId) Promise~User[]~
+    +assignRole(userId, roleId) Promise~boolean~
+    +removeRole(userId, roleId) Promise~boolean~
+    +changePassword(userId, oldPassword, newPassword) Promise~boolean~
+  }
+  class BaseService {
+    #httpClient AxiosInstance
+    #baseUrl string
+    #resourceName string
+    -setupInterceptors() void
+    #getResourceUrl(path) string
+    #handleResponse(response) ApiResponse<R>
+    #handleError(error) never
+    +findById*(id) Promise~T | null~
+    +findAll*(params) Promise~PaginatedResult<T~>
+    +create*(data) Promise~T~
+    +update*(id, data) Promise~T~
+    +delete*(id) Promise~boolean~
+    +constructor(baseUrl, resourceName)
+  }
+  class RoleService {
+    +findById(id) Promise~any~
+    +findAll(params) Promise~PaginatedResult<Role~>
+    +create(data) Promise~Role~
+    +update(id, data) Promise~Role~
+    +delete(id) Promise~boolean~
+    +addPermission(roleId, permissionId) Promise~boolean~
+    +removePermission(roleId, permissionId) Promise~boolean~
+    +constructor(baseUrl)
+  }
+  class UserService {
+    -roleService RoleService
+    -userCache Map~string,{ user: User; ti...
+    -cacheTimeout number
+    -setupCacheCleanup() void
+    -getCachedUser(id) any
+    -cacheUser(user) void
+    +findById(id) Promise~any~
+    +findByEmail(email) Promise~any~
+    +findAll(params) Promise~PaginatedResult<User~>
+    +create(userData) Promise~User~
+    +update(id, data) Promise~User~
+    +delete(id) Promise~boolean~
+    +findByRole(roleId) Promise~User[]~
+    +assignRole(userId, roleId) Promise~boolean~
+    +removeRole(userId, roleId) Promise~boolean~
+    +changePassword(userId, oldPassword, newPassword) Promise~boolean~
+    +batchCreate(users) Promise~User[]~
+    +search(query, params) Promise~PaginatedResult<User~>
+    +getStatistics() Promise~any~
+    +clearCache() void
+    +getCacheStats() { size: number; timeout: nu...
+    +constructor(baseUrl)
+  }
+
+  %% File: server
+  class ExpressApp {
+    +setupMiddleware() void
+    +setupRoutes() void
+    +createApiRouter() Router
+    +createUserRouter() Router
+    +createRoleRouter() Router
+    +createAuthRouter() Router
+    +setupErrorHandling() void
+    +initializeTestData() void
+    +validateUserData(userData, isUpdate) { isValid: boolean; errors:...
+    +handleError(res, error, message) void
+    +start() Promise~void~
+    +stop() Promise~void~
+    +getApp() Express
+    +getStatus() { isRunning: boolean; port:...
+    +constructor()
+  }
+
+  %% File: database
+  class DatabaseManager {
+    +initialize() any
+    +query(text, params) Promise~any~
+    +transaction(callback) Promise~any~
+    +batchInsert(tableName, records, chunkSize) Promise~any[]~
+    +close() Promise~void~
+    +delay(ms) Promise~any~
+    +getStatus() { isConnected: boolean; tot...
+    +constructor()
+  }
+  class QueryBuilder {
+    +select(fields) this
+    +where(field, operator, value) this
+    +whereIn(field, values) this
+    +join(tableName, condition) this
+    +leftJoin(tableName, condition) this
+    +orderBy(field, direction) this
+    +limit(count) this
+    +offset(count) this
+    +paginate(page, limit) this
+    +toSQL() { sql: string; params: any[...
+    +execute(dbManager) Promise~any~
+    +constructor(tableName)
+  }
+  class MigrationRunner {
+    +addMigration(name, upQuery, downQuery) this
+    +runMigrations() Promise~void~
+    +createMigrationTable() Promise~void~
+    +getExecutedMigrations() Promise~any~
+    +constructor(dbManager)
+  }
+
+  %% Relationships
+  EventEmitter <|-- BaseService
+  IBaseService <|.. BaseService
+  BaseService <|-- RoleService
+  BaseService <|-- UserService
+  IUserService <|.. UserService
+```
