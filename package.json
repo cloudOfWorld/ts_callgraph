@@ -1,0 +1,54 @@
+{
+  "name": "ts-callgraph-analyzer",
+  "version": "1.0.0",
+  "description": "A comprehensive TypeScript project analyzer that generates call graphs and dependency relationships",
+  "main": "dist/index.js",
+  "bin": {
+    "ts-callgraph": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "start": "node dist/cli.js",
+    "dev": "ts-node src/cli.ts",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "clean": "rimraf dist",
+    "prepack": "npm run build"
+  },
+  "keywords": [
+    "typescript",
+    "call-graph",
+    "static-analysis",
+    "ast",
+    "dependency-analysis"
+  ],
+  "author": "TypeScript CallGraph Analyzer",
+  "license": "MIT",
+  "dependencies": {
+    "typescript": "^5.0.0",
+    "commander": "^11.0.0",
+    "chalk": "^4.1.2",
+    "glob": "^10.0.0",
+    "mermaid": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/jest": "^29.0.0",
+    "jest": "^29.0.0",
+    "ts-jest": "^29.0.0",
+    "ts-node": "^10.0.0",
+    "rimraf": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/ts-callgraph-analyzer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/ts-callgraph-analyzer/issues"
+  },
+  "homepage": "https://github.com/your-username/ts-callgraph-analyzer#readme"
+}
