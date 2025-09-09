@@ -318,6 +318,15 @@ export class HtmlFormatter extends BaseFormatter {
             height: 16px;
             border-radius: 2px;
         }
+
+        .class-name {
+            background: #e8f4fd;
+            color: #1565c0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.85em;
+            font-weight: 500;
+        }
     `;
   }
 
@@ -465,7 +474,7 @@ export class HtmlFormatter extends BaseFormatter {
         <h2>调用关系</h2>
         
         <div class="filter-info">
-            <p>显示函数、方法和构造函数之间的调用关系。</p>
+            <p>显示函数、方法和构造函数之间的调用关系，包含调用者所属类和文件信息。</p>
         </div>
 
         <div class="table-container">
@@ -473,24 +482,38 @@ export class HtmlFormatter extends BaseFormatter {
                 <thead>
                     <tr>
                         <th>调用者</th>
+                        <th>调用者类</th>
                         <th>被调用者</th>
+                        <th>被调用者类</th>
                         <th>调用类型</th>
                         <th>文件</th>
                         <th>位置</th>
                     </tr>
                 </thead>
                 <tbody>
-                    ${result.callRelations.map(call => `
+                    ${result.callRelations.map(call => {
+                      // 处理新旧格式兼容性
+                      const callerName = typeof call.caller === 'string' ? call.caller : call.caller.name;
+                      const calleeName = typeof call.callee === 'string' ? call.callee : call.callee.name;
+                      const callerClass = typeof call.caller === 'string' ? '' : (call.caller.className || '');
+                      const calleeClass = typeof call.callee === 'string' ? '' : (call.callee.className || '');
+                      const callerFile = typeof call.caller === 'string' ? '' : (call.caller.filePath ? path.basename(call.caller.filePath) : '');
+                      const calleeFile = typeof call.callee === 'string' ? '' : (call.callee.filePath ? path.basename(call.callee.filePath) : '');
+                      
+                      return `
                         <tr>
-                            <td>${this.escapeHtml(call.caller)}</td>
-                            <td>${this.escapeHtml(call.callee)}</td>
+                            <td title="${callerFile}">${this.escapeHtml(callerName)}</td>
+                            <td>${callerClass ? `<span class="class-name">${this.escapeHtml(callerClass)}</span>` : '-'}</td>
+                            <td title="${calleeFile}">${this.escapeHtml(calleeName)}</td>
+                            <td>${calleeClass ? `<span class="class-name">${this.escapeHtml(calleeClass)}</span>` : '-'}</td>
                             <td><span class="symbol-type ${call.callType}">${call.callType}</span></td>
                             <td title="${call.location.filePath}">
                                 ${path.basename(call.location.filePath)}
                             </td>
                             <td>${call.location.start.line}:${call.location.start.column}</td>
                         </tr>
-                    `).join('')}
+                      `;
+                    }).join('')}
                 </tbody>
             </table>
         </div>

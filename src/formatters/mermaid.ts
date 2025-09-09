@@ -178,8 +178,11 @@ export class MermaidFormatter extends BaseFormatter {
     const symbolMap = new Map(symbols.map(s => [s.name, s.id]));
 
     callRelations.forEach(call => {
-      const callerId = symbolMap.get(call.caller);
-      const calleeId = symbolMap.get(call.callee);
+      const callerName = typeof call.caller === 'string' ? call.caller : call.caller.name;
+      const calleeName = typeof call.callee === 'string' ? call.callee : call.callee.name;
+      
+      const callerId = symbolMap.get(callerName);
+      const calleeId = symbolMap.get(calleeName);
       
       if (callerId && calleeId) {
         const cleanCallerId = this.cleanId(callerId);

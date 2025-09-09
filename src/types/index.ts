@@ -87,9 +87,17 @@ export interface ParameterSymbol {
 export type Symbol = ClassSymbol | InterfaceSymbol | FunctionSymbol | MethodSymbol | 
                     ConstructorSymbol | PropertySymbol | VariableSymbol;
 
+export interface CallRelationParticipant {
+  name: string;
+  id?: string;
+  className?: string;
+  filePath?: string;
+  type?: 'method' | 'function' | 'constructor' | 'property';
+}
+
 export interface CallRelation {
-  caller: string;
-  callee: string;
+  caller: CallRelationParticipant;
+  callee: CallRelationParticipant;
   callType: 'method' | 'function' | 'constructor' | 'property';
   location: Location;
 }

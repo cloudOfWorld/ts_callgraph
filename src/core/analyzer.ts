@@ -6,6 +6,7 @@ import {
   AnalysisOptions, 
   Symbol, 
   CallRelation, 
+  CallRelationParticipant,
   ImportRelation, 
   ExportRelation 
 } from '../types';
@@ -556,58 +557,201 @@ export class TypeScriptAnalyzer {
     const location = Utils.getLocation(node, sourceFile);
     
     // 获取调用者信息
-    const caller = this.findContainingFunction(node, sourceFile);
+    const caller = this.findContainingFunctionDetails(node, sourceFile);
     if (!caller) return;
 
     // 获取被调用者信息
-    let callee: string | undefined;
-    let callType: 'method' | 'function' | 'constructor' | 'property' = 'function';
+    const callee = this.extractCalleeDetails(node, sourceFile);
+    if (!callee) return;
+
+    this.callRelations.push({
+      caller,
+      callee,
+      callType: callee.type || 'function',
+      location
+    });
+  }
+
+  /**
+   * 提取被调用者的详细信息
+   */
+  private extractCalleeDetails(node: ts.CallExpression | ts.NewExpression, sourceFile: ts.SourceFile): CallRelationParticipant | undefined {
+    let callee: CallRelationParticipant | undefined;
 
     if (ts.isCallExpression(node)) {
       if (ts.isPropertyAccessExpression(node.expression)) {
         // 方法调用: obj.method()
-        callee = node.expression.name.text;
-        callType = 'method';
+        const methodName = node.expression.name.text;
+        const objectExpression = node.expression.expression;
+        
+        // 尝试获取对象的类型信息
+        const objectType = this.getObjectTypeInfo(objectExpression, sourceFile);
+        
+        callee = {
+          name: methodName,
+          type: 'method',
+          className: objectType?.className,
+          filePath: objectType?.filePath || sourceFile.fileName
+        };
       } else if (ts.isIdentifier(node.expression)) {
         // 函数调用: func()
-        callee = node.expression.text;
-        callType = 'function';
+        const functionName = node.expression.text;
+        const functionSymbol = this.findSymbolByName(functionName, sourceFile.fileName);
+        
+        callee = {
+          name: functionName,
+          type: 'function',
+          id: functionSymbol?.id,
+          filePath: functionSymbol?.location.filePath || sourceFile.fileName
+        };
       }
     } else if (ts.isNewExpression(node)) {
       // 构造函数调用: new Class()
       if (ts.isIdentifier(node.expression)) {
-        callee = node.expression.text;
-        callType = 'constructor';
+        const className = node.expression.text;
+        const classSymbol = this.findSymbolByName(className, sourceFile.fileName);
+        
+        callee = {
+          name: 'constructor',
+          type: 'constructor',
+          className: className,
+          id: classSymbol?.id,
+          filePath: classSymbol?.location.filePath || sourceFile.fileName
+        };
       }
     }
 
-    if (callee) {
-      this.callRelations.push({
-        caller,
-        callee,
-        callType,
-        location
-      });
-    }
+    return callee;
   }
 
   /**
-   * 查找包含给定节点的函数
+   * 获取对象的类型信息
    */
-  private findContainingFunction(node: ts.Node, sourceFile: ts.SourceFile): string | undefined {
+  private getObjectTypeInfo(expression: ts.Expression, sourceFile: ts.SourceFile): { className?: string, filePath?: string } | undefined {
+    try {
+      const type = this.typeChecker.getTypeAtLocation(expression);
+      const symbol = type.getSymbol();
+      
+      if (symbol) {
+        const className = symbol.getName();
+        
+        // 尝试找到类的定义位置
+        const declarations = symbol.valueDeclaration;
+        if (declarations) {
+          const declarationFile = declarations.getSourceFile();
+          return {
+            className: className,
+            filePath: declarationFile.fileName
+          };
+        }
+        
+        return { className };
+      }
+    } catch (error) {
+      // 如果类型检查失败，尝试通过表达式推断
+    }
+
+    // 如果是简单的标识符，尝试查找变量声明
+    if (ts.isIdentifier(expression)) {
+      const variableName = expression.text;
+      const variableSymbol = this.findSymbolByName(variableName, sourceFile.fileName);
+      
+      if (variableSymbol && variableSymbol.type === 'variable') {
+        const varSymbol = variableSymbol as any;
+        // 尝试从类型字符串推断类名
+        const typeString = varSymbol.variableType;
+        if (typeString && typeString !== 'any') {
+          return {
+            className: typeString,
+            filePath: variableSymbol.location.filePath
+          };
+        }
+      }
+    }
+
+    return undefined;
+  }
+
+  /**
+   * 根据名称查找符号
+   */
+  private findSymbolByName(name: string, currentFilePath: string): Symbol | undefined {
+    // 首先在当前文件中查找
+    let symbol = this.symbols.find(s => 
+      s.name === name && s.location.filePath === currentFilePath
+    );
+    
+    // 如果在当前文件中没找到，查找所有文件
+    if (!symbol) {
+      symbol = this.symbols.find(s => s.name === name);
+    }
+    
+    return symbol;
+  }
+
+  /**
+   * 查找包含给定节点的函数的详细信息
+   */
+  private findContainingFunctionDetails(node: ts.Node, sourceFile: ts.SourceFile): CallRelationParticipant | undefined {
     let current = node.parent;
     
     while (current) {
       if (ts.isFunctionDeclaration(current) && current.name) {
-        return current.name.text;
+        const functionName = current.name.text;
+        const functionSymbol = this.findSymbolByName(functionName, sourceFile.fileName);
+        
+        return {
+          name: functionName,
+          type: 'function',
+          id: functionSymbol?.id,
+          filePath: sourceFile.fileName
+        };
       } else if (ts.isMethodDeclaration(current) && ts.isIdentifier(current.name)) {
-        return current.name.text;
+        const methodName = current.name.text;
+        const className = this.findContainingClassName(current);
+        const methodSymbol = this.findSymbolByName(methodName, sourceFile.fileName);
+        
+        return {
+          name: methodName,
+          type: 'method',
+          className: className,
+          id: methodSymbol?.id,
+          filePath: sourceFile.fileName
+        };
       } else if (ts.isConstructorDeclaration(current)) {
-        return 'constructor';
+        const className = this.findContainingClassName(current);
+        const constructorSymbol = this.symbols.find(s => 
+          s.type === 'constructor' && 
+          s.location.filePath === sourceFile.fileName
+        );
+        
+        return {
+          name: 'constructor',
+          type: 'constructor',
+          className: className,
+          id: constructorSymbol?.id,
+          filePath: sourceFile.fileName
+        };
       } else if (ts.isArrowFunction(current) || ts.isFunctionExpression(current)) {
         // 对于箭头函数和函数表达式，继续向上查找
         current = current.parent;
         continue;
+      }
+      current = current.parent;
+    }
+    
+    return undefined;
+  }
+
+  /**
+   * 查找包含给定节点的类名
+   */
+  private findContainingClassName(node: ts.Node): string | undefined {
+    let current = node.parent;
+    
+    while (current) {
+      if (ts.isClassDeclaration(current) && current.name) {
+        return current.name.text;
       }
       current = current.parent;
     }
