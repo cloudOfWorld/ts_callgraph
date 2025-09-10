@@ -22,6 +22,96 @@ export class HtmlFormatter extends BaseFormatter {
     </style>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://unpkg.com/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        /* D3.js 交互式图表样式 - 基于TS-Call-Graph思想 */
+        .force-graph {
+            width: 100%;
+            height: 600px;
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .node {
+            cursor: pointer;
+            stroke-width: 2px;
+            transition: all 0.3s ease;
+        }
+        
+        .node.class { fill: #667eea; stroke: #4c63d2; }
+        .node.function { fill: #10b981; stroke: #059669; }
+        .node.method { fill: #f59e0b; stroke: #d97706; }
+        .node.interface { fill: #8b5cf6; stroke: #7c3aed; }
+        
+        .node.private { stroke: #ef4444; stroke-width: 3px; }
+        .node.protected { stroke: #f97316; stroke-width: 3px; }
+        .node.public { stroke: #22c55e; }
+        
+        .node:hover {
+            stroke-width: 4px;
+            filter: brightness(1.2);
+        }
+        
+        .link {
+            stroke: #4b5563;
+            stroke-width: 1.5px;
+            fill: none;
+            opacity: 0.6;
+        }
+        
+        .link.highlighted {
+            stroke: #667eea;
+            stroke-width: 3px;
+            opacity: 1;
+        }
+        
+        .node-label {
+            font-size: 12px;
+            fill: #e4e4e7;
+            text-anchor: middle;
+            pointer-events: none;
+            font-weight: 500;
+        }
+        
+        .graph-controls {
+            background: #1a1a1a;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .control-group label {
+            font-size: 0.9rem;
+            color: #a1a1aa;
+        }
+        
+        .control-group input[type="range"] {
+            width: 150px;
+        }
+        
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 0.75rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            pointer-events: none;
+            z-index: 1000;
+            max-width: 300px;
+            border: 1px solid #333;
+        }
+    </style>
 </head>
 <body>
     <header class="header">
@@ -39,7 +129,7 @@ export class HtmlFormatter extends BaseFormatter {
         <button class="tab-button" onclick="showTab('symbols')">符号</button>
         <button class="tab-button" onclick="showTab('calls')">调用关系</button>
         <button class="tab-button" onclick="showTab('imports')">导入关系</button>
-        <button class="tab-button" onclick="showTab('graph')">调用图</button>
+        <button class="tab-button" onclick="showTab('graph')">D3.js交互图</button>
         <button class="tab-button" onclick="showTab('class-diagram')">类图</button>
     </nav>
 
@@ -565,46 +655,68 @@ export class HtmlFormatter extends BaseFormatter {
   private generateGraphTab(result: AnalysisResult): string {
     return `
     <div id="graph" class="tab-content">
-        <h2>调用图可视化</h2>
+        <h2>D3.js 交互式调用图 - 基于TS-Call-Graph的力导向布局</h2>
         
-        <div class="controls">
+        <div class="graph-controls">
             <div class="control-group">
-                <label>布局:</label>
-                <select id="graph-layout">
-                    <option value="force">力导向布局</option>
-                    <option value="hierarchy">层次布局</option>
-                    <option value="circular">环形布局</option>
-                </select>
+                <label>引力强度</label>
+                <input type="range" id="gravity-slider" min="-1000" max="-50" value="-300">
+                <span id="gravity-value">-300</span>
             </div>
+            
             <div class="control-group">
-                <label>节点大小:</label>
-                <input type="range" id="node-size" min="5" max="20" value="10">
+                <label>链接距离</label>
+                <input type="range" id="distance-slider" min="30" max="200" value="100">
+                <span id="distance-value">100</span>
+            </div>
+            
+            <div class="control-group">
+                <label>节点排斥力</label>
+                <input type="range" id="charge-slider" min="-1000" max="-50" value="-300">
+                <span id="charge-value">-300</span>
+            </div>
+            
+            <div class="control-group">
+                <label>节点类型过滤</label>
+                <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
+                    <label><input type="checkbox" checked data-filter="class"> 类</label>
+                    <label><input type="checkbox" checked data-filter="function"> 函数</label>
+                    <label><input type="checkbox" checked data-filter="method"> 方法</label>
+                    <label><input type="checkbox" checked data-filter="interface"> 接口</label>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <label>可见性过滤</label>
+                <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
+                    <label><input type="checkbox" checked data-visibility="public"> Public</label>
+                    <label><input type="checkbox" checked data-visibility="private"> Private</label>
+                    <label><input type="checkbox" checked data-visibility="protected"> Protected</label>
+                </div>
             </div>
         </div>
 
         <div class="legend">
             <div class="legend-item">
-                <div class="legend-color" style="background: #1f77b4"></div>
-                <span>类</span>
+                <div class="legend-color node class"></div>
+                <span>类 (蓝色)</span>
             </div>
             <div class="legend-item">
-                <div class="legend-color" style="background: #ff7f0e"></div>
-                <span>函数</span>
+                <div class="legend-color node function"></div>
+                <span>函数 (绿色)</span>
             </div>
             <div class="legend-item">
-                <div class="legend-color" style="background: #2ca02c"></div>
-                <span>方法</span>
+                <div class="legend-color node method"></div>
+                <span>方法 (橙色)</span>
             </div>
             <div class="legend-item">
-                <div class="legend-color" style="background: #d62728"></div>
-                <span>属性</span>
+                <div class="legend-color node interface"></div>
+                <span>接口 (紫色)</span>
             </div>
         </div>
 
-        <div class="graph-container">
-            <svg id="call-graph"></svg>
-            <div class="node-info" id="node-info"></div>
-        </div>
+        <div id="force-graph" class="force-graph"></div>
+        <div id="graph-tooltip" class="tooltip" style="display: none;"></div>
     </div>`;
   }
 
@@ -822,6 +934,88 @@ export class HtmlFormatter extends BaseFormatter {
         // 全局数据
         const analysisData = ${JSON.stringify(result)};
         
+        // 类型过滤器和可见性过滤器状态
+        const filterState = {
+            types: new Set(['class', 'function', 'method', 'interface']),
+            visibility: new Set(['public', 'private', 'protected']),
+            graphParams: {
+                gravity: -300,
+                distance: 100,
+                charge: -300
+            }
+        };
+        
+        // 初始化增强的控制功能
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEnhancedControls();
+        });
+        
+        function setupEnhancedControls() {
+            // 节点类型过滤器
+            const typeFilters = document.querySelectorAll('[data-filter]');
+            typeFilters.forEach(checkbox => {
+                checkbox.addEventListener('change', (e) => {
+                    const filterType = e.target.dataset.filter;
+                    if (e.target.checked) {
+                        filterState.types.add(filterType);
+                    } else {
+                        filterState.types.delete(filterType);
+                    }
+                    updateInteractiveGraph();
+                });
+            });
+            
+            // 可见性过滤器
+            const visibilityFilters = document.querySelectorAll('[data-visibility]');
+            visibilityFilters.forEach(checkbox => {
+                checkbox.addEventListener('change', (e) => {
+                    const visibility = e.target.dataset.visibility;
+                    if (e.target.checked) {
+                        filterState.visibility.add(visibility);
+                    } else {
+                        filterState.visibility.delete(visibility);
+                    }
+                    updateInteractiveGraph();
+                });
+            });
+            
+            // 图形参数滑块
+            const gravitySlider = document.getElementById('gravity-slider');
+            const distanceSlider = document.getElementById('distance-slider');
+            const chargeSlider = document.getElementById('charge-slider');
+            
+            if (gravitySlider) {
+                gravitySlider.addEventListener('input', (e) => {
+                    filterState.graphParams.gravity = parseInt(e.target.value);
+                    document.getElementById('gravity-value').textContent = e.target.value;
+                    updateInteractiveGraph();
+                });
+            }
+            
+            if (distanceSlider) {
+                distanceSlider.addEventListener('input', (e) => {
+                    filterState.graphParams.distance = parseInt(e.target.value);
+                    document.getElementById('distance-value').textContent = e.target.value;
+                    updateInteractiveGraph();
+                });
+            }
+            
+            if (chargeSlider) {
+                chargeSlider.addEventListener('input', (e) => {
+                    filterState.graphParams.charge = parseInt(e.target.value);
+                    document.getElementById('charge-value').textContent = e.target.value;
+                    updateInteractiveGraph();
+                });
+            }
+        }
+        
+        // 增强的交互式图表更新函数
+        function updateInteractiveGraph() {
+            if (document.getElementById('graph').classList.contains('active')) {
+                renderInteractiveGraph();
+            }
+        }
+        
         // 标签切换
         function showTab(tabName) {
             // 隐藏所有标签内容
@@ -840,10 +1034,253 @@ export class HtmlFormatter extends BaseFormatter {
             
             // 特殊处理
             if (tabName === 'graph') {
-                setTimeout(renderCallGraph, 100);
+                setTimeout(renderInteractiveGraph, 100);
             } else if (tabName === 'class-diagram') {
                 setTimeout(renderMermaid, 100);
             }
+        }
+        
+        // 基于TS-Call-Graph的交互式力导向图
+        function renderInteractiveGraph() {
+            const container = document.getElementById('force-graph');
+            if (!container) return;
+            
+            // 清空容器
+            d3.select(container).selectAll('*').remove();
+            
+            const width = container.clientWidth || 900;
+            const height = container.clientHeight || 600;
+            
+            const svg = d3.select(container)
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height)
+                .style('background', '#0a0a0a');
+                
+            // 根据过滤器创建节点数据
+            const nodes = analysisData.symbols
+                .filter(symbol => filterState.types.has(symbol.type))
+                .filter(symbol => !symbol.visibility || filterState.visibility.has(symbol.visibility))
+                .map(symbol => ({
+                    id: symbol.id,
+                    name: symbol.name,
+                    type: symbol.type,
+                    visibility: symbol.visibility || 'public',
+                    location: symbol.location,
+                    x: Math.random() * width,
+                    y: Math.random() * height
+                }));
+                
+            // 创建链接数据
+            const nodeMap = new Map();
+            nodes.forEach(node => {
+                nodeMap.set(node.id, node);
+                nodeMap.set(node.name, node);
+            });
+            
+            const links = analysisData.callRelations
+                .map(rel => {
+                    const sourceNode = nodeMap.get(rel.caller?.id) || nodeMap.get(rel.caller?.name);
+                    const targetNode = nodeMap.get(rel.callee?.id) || nodeMap.get(rel.callee?.name);
+                    
+                    if (sourceNode && targetNode && sourceNode.id !== targetNode.id) {
+                        return {
+                            source: sourceNode.id,
+                            target: targetNode.id,
+                            type: rel.callType
+                        };
+                    }
+                    return null;
+                })
+                .filter(link => link !== null);
+            
+            console.log('交互式图表: ' + nodes.length + ' 个节点, ' + links.length + ' 个链接');
+            
+            if (nodes.length === 0) {
+                svg.append('text')
+                    .attr('x', width / 2)
+                    .attr('y', height / 2)
+                    .attr('text-anchor', 'middle')
+                    .attr('fill', '#e4e4e7')
+                    .attr('font-size', 16)
+                    .text('没有符合过滤条件的数据');
+                return;
+            }
+            
+            // 力仿真 - 使用自定义参数
+            const simulation = d3.forceSimulation(nodes)
+                .force('link', d3.forceLink(links).id(d => d.id).distance(filterState.graphParams.distance))
+                .force('charge', d3.forceManyBody().strength(filterState.graphParams.charge))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collision', d3.forceCollide(25));
+            
+            // 添加箭头标记
+            const defs = svg.append('defs');
+            defs.append('marker')
+                .attr('id', 'arrowhead')
+                .attr('viewBox', '-0 -5 10 10')
+                .attr('refX', 20)
+                .attr('refY', 0)
+                .attr('orient', 'auto')
+                .attr('markerWidth', 8)
+                .attr('markerHeight', 8)
+                .append('path')
+                .attr('d', 'M 0,-5 L 10,0 L 0,5')
+                .attr('fill', '#4b5563');
+            
+            // 创建链接
+            const link = svg.append('g')
+                .selectAll('line')
+                .data(links)
+                .enter().append('line')
+                .attr('class', 'link')
+                .attr('marker-end', 'url(#arrowhead)');
+            
+            // 创建节点
+            const node = svg.append('g')
+                .selectAll('circle')
+                .data(nodes)
+                .enter().append('circle')
+                .attr('class', d => \`node \${d.type} \${d.visibility}\`)
+                .attr('r', d => getNodeRadius(d.type))
+                .call(d3.drag()
+                    .on('start', dragstarted)
+                    .on('drag', dragged)
+                    .on('end', dragended))
+                .on('click', (event, d) => {
+                    selectNode(d, event);
+                })
+                .on('mouseover', (event, d) => {
+                    showTooltip(event, d);
+                    highlightConnections(d, nodes, links, node, link);
+                })
+                .on('mouseout', () => {
+                    hideTooltip();
+                    resetHighlight(node, link);
+                });
+            
+            // 创建标签
+            const labels = svg.append('g')
+                .selectAll('text')
+                .data(nodes)
+                .enter().append('text')
+                .attr('class', 'node-label')
+                .text(d => d.name.length > 12 ? d.name.substring(0, 10) + '...' : d.name);
+            
+            // 更新位置
+            simulation.on('tick', () => {
+                link
+                    .attr('x1', d => d.source.x)
+                    .attr('y1', d => d.source.y)
+                    .attr('x2', d => d.target.x)
+                    .attr('y2', d => d.target.y);
+                
+                node
+                    .attr('cx', d => Math.max(20, Math.min(width - 20, d.x)))
+                    .attr('cy', d => Math.max(20, Math.min(height - 20, d.y)));
+                
+                labels
+                    .attr('x', d => Math.max(20, Math.min(width - 20, d.x)))
+                    .attr('y', d => Math.max(20, Math.min(height - 20, d.y)) + 30);
+            });
+            
+            // 拖拽事件
+            function dragstarted(event, d) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                d.fx = d.x;
+                d.fy = d.y;
+            }
+            
+            function dragged(event, d) {
+                d.fx = event.x;
+                d.fy = event.y;
+            }
+            
+            function dragended(event, d) {
+                if (!event.active) simulation.alphaTarget(0);
+                d.fx = null;
+                d.fy = null;
+            }
+            
+            // 节点选中事件
+            function selectNode(d, event) {
+                // 移除所有选中状态
+                node.classed('selected', false);
+                
+                // 选中当前节点
+                d3.select(event.target).classed('selected', true);
+                
+                // 显示详细信息
+                showNodeDetails(d);
+            }
+            
+            // 高亮连接
+            function highlightConnections(selectedNode, allNodes, allLinks, nodeSelection, linkSelection) {
+                const connectedNodes = new Set([selectedNode.id]);
+                
+                allLinks.forEach(link => {
+                    if (link.source.id === selectedNode.id || link.target.id === selectedNode.id) {
+                        connectedNodes.add(link.source.id);
+                        connectedNodes.add(link.target.id);
+                    }
+                });
+                
+                nodeSelection.style('opacity', d => connectedNodes.has(d.id) ? 1 : 0.3);
+                linkSelection.classed('highlighted', l => 
+                    l.source.id === selectedNode.id || l.target.id === selectedNode.id
+                ).style('opacity', l => 
+                    l.source.id === selectedNode.id || l.target.id === selectedNode.id ? 1 : 0.1
+                );
+            }
+            
+            // 重置高亮
+            function resetHighlight(nodeSelection, linkSelection) {
+                nodeSelection.style('opacity', 1);
+                linkSelection.classed('highlighted', false).style('opacity', 0.6);
+            }
+        }
+        
+        // 节点半径获取函数
+        function getNodeRadius(type) {
+            switch(type) {
+                case 'class': return 18;
+                case 'interface': return 16;
+                case 'function': return 14;
+                case 'method': return 12;
+                default: return 10;
+            }
+        }
+        
+        // 显示工具提示
+        function showTooltip(event, d) {
+            const tooltip = document.getElementById('graph-tooltip');
+            if (!tooltip) return;
+            
+            tooltip.innerHTML = \`
+                <strong>\${d.name}</strong><br>
+                <em>\${d.type}</em><br>
+                可见性: \${d.visibility}<br>
+                文件: \${d.location.filePath.split('/').pop()}<br>
+                行号: \${d.location.start.line}
+            \`;
+            
+            tooltip.style.display = 'block';
+            tooltip.style.left = (event.pageX + 10) + 'px';
+            tooltip.style.top = (event.pageY - 10) + 'px';
+        }
+        
+        // 隐藏工具提示
+        function hideTooltip() {
+            const tooltip = document.getElementById('graph-tooltip');
+            if (tooltip) {
+                tooltip.style.display = 'none';
+            }
+        }
+        
+        // 显示节点详细信息
+        function showNodeDetails(d) {
+            console.log('选中节点:', d);
+            // 这里可以添加更多的节点详细信息显示逻辑
         }
 
         // 符号过滤

@@ -31,7 +31,8 @@ class CLI {
       .version('1.0.0');
 
     this.program
-      .argument('<patterns...>', '要分析的文件或目录模式 (支持glob模式)')
+      .argument('[patterns...]', '要分析的文件或目录模式 (支持glob模式)')
+      .option('-c, --config <path>', '配置文件路径')
       .option('-o, --output <path>', '输出文件路径')
       .option('-f, --format <type>', '输出格式 (json|mermaid|html)', 'json')
       .option('-j, --json <path>', 'JSON格式输出路径')
@@ -73,23 +74,47 @@ class CLI {
    */
   private async handleAnalyze(patterns: string[], options: any): Promise<void> {
     try {
+      let finalPatterns = patterns;
+      let finalOptions = options;
+      
+      // 如果指定了配置文件，加载配置
+      if (options.config) {
+        const config = this.loadConfig(options.config);
+        finalPatterns = config.patterns || patterns;
+        finalOptions = { ...options, ...config.options };
+        if (config.output) finalOptions.output = config.output;
+        if (config.format) finalOptions.format = config.format;
+        if (config.excludePatterns) finalOptions.exclude = config.excludePatterns.join(',');
+      }
+      
+      // 如果没有指定模式且没有配置文件，显示帮助
+      if (finalPatterns.length === 0 && !options.config) {
+        console.log(chalk.yellow('⚠️  请指定要分析的文件模式或使用配置文件'));
+        console.log(chalk.gray('示例：'));
+        console.log(chalk.gray('  ts-callgraph "src/**/*.ts" -f html -o report.html'));
+        console.log(chalk.gray('  ts-callgraph -c analysis-config.json'));
+        return;
+      }
+
       console.log(chalk.blue('🔍 开始分析TypeScript/JavaScript项目...'));
-      console.log(chalk.gray(`模式: ${patterns.join(', ')}`));
+      if (finalPatterns.length > 0) {
+        console.log(chalk.gray(`模式: ${finalPatterns.join(', ')}`));
+      }
 
       // 解析选项
       const analysisOptions: AnalysisOptions = {
-        includePrivate: options.includePrivate,
-        includeNodeModules: options.includeNodeModules,
-        maxDepth: parseInt(options.maxDepth) || 10,
-        excludePatterns: options.exclude.split(',').map((p: string) => p.trim()),
-        followImports: options.followImports,
-        includeJavaScript: options.jsOnly ? true : (options.tsOnly ? false : (options.includeJs !== false)),
-        includeTypeScript: options.tsOnly ? true : (options.jsOnly ? false : (options.includeTs !== false)),
+        includePrivate: finalOptions.includePrivate,
+        includeNodeModules: finalOptions.includeNodeModules,
+        maxDepth: parseInt(finalOptions.maxDepth) || 10,
+        excludePatterns: finalOptions.exclude.split(',').map((p: string) => p.trim()),
+        followImports: finalOptions.followImports,
+        includeJavaScript: finalOptions.jsOnly ? true : (finalOptions.tsOnly ? false : (finalOptions.includeJs !== false)),
+        includeTypeScript: finalOptions.tsOnly ? true : (finalOptions.jsOnly ? false : (finalOptions.includeTs !== false)),
         analyzeCallChains: true,
         detectPatterns: true
       };
 
-      if (options.verbose) {
+      if (finalOptions.verbose) {
         console.log(chalk.gray('分析选项:'), analysisOptions);
       }
 
@@ -105,7 +130,7 @@ class CLI {
 
       // 执行分析
       const startTime = Date.now();
-      const result = await analyzer.analyze(patterns);
+      const result = await analyzer.analyze(finalPatterns);
       const duration = Date.now() - startTime;
 
       console.log(chalk.green('✅ 分析完成!'));
@@ -116,7 +141,7 @@ class CLI {
       console.log(chalk.gray(`导入关系: ${result.importRelations.length}`));
 
       // 输出结果
-      await this.outputResults(result, options);
+      await this.outputResults(result, finalOptions);
 
     } catch (error) {
       console.error(chalk.red('❌ 分析失败:'), error);
@@ -215,6 +240,27 @@ class CLI {
    */
   run(argv: string[] = process.argv): void {
     this.program.parse(argv);
+  }
+
+  /**
+   * 加载配置文件
+   */
+  private loadConfig(configPath: string): any {
+    try {
+      const absolutePath = path.resolve(configPath);
+      if (!fs.existsSync(absolutePath)) {
+        throw new Error(`配置文件不存在: ${absolutePath}`);
+      }
+      
+      const configContent = fs.readFileSync(absolutePath, 'utf-8');
+      const config = JSON.parse(configContent);
+      
+      console.log(chalk.green(`✅ 加载配置文件: ${configPath}`));
+      return config;
+    } catch (error) {
+      console.error(chalk.red(`❌ 加载配置文件失败: ${error instanceof Error ? error.message : String(error)}`));
+      process.exit(1);
+    }
   }
 }
 

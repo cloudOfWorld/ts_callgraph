@@ -362,15 +362,135 @@ export class TypeScriptAnalyzer {
       isLet = !!(parent.flags & ts.NodeFlags.Let);
     }
 
+    // 获取类型信息
+    let variableType = Utils.getTypeString(this.typeChecker, node);
+    
+    // 如果类型是'any'且有初始化表达式，尝试从初始化表达式推断类型
+    if ((!variableType || variableType === 'any') && node.initializer) {
+      const inferredType = this.inferTypeFromInitializer(node.initializer, sourceFile);
+      if (inferredType && inferredType !== 'any') {
+        variableType = inferredType;
+      }
+    }
+    
+    // 如果有类型注解，优先使用类型注解
+    if (node.type) {
+      const annotationType = Utils.getTypeString(this.typeChecker, node.type);
+      if (annotationType && annotationType !== 'any') {
+        variableType = annotationType;
+      }
+    }
+
     this.symbols.push({
       type: 'variable',
       id,
       name,
       location,
-      variableType: Utils.getTypeString(this.typeChecker, node),
+      variableType,
       isConst,
       isLet
     });
+  }
+
+  /**
+   * 从初始化表达式推断类型
+   */
+  private inferTypeFromInitializer(initializer: ts.Expression, sourceFile: ts.SourceFile): string | undefined {
+    // 如果是函数调用，尝试获取函数的返回类型
+    if (ts.isCallExpression(initializer)) {
+      const functionSymbol = this.resolveFunctionSymbol(initializer, sourceFile);
+      if (functionSymbol && functionSymbol.returnType) {
+        return this.parseReturnType(functionSymbol.returnType);
+      }
+    }
+    
+    // 其他情况使用TypeScript编译器的类型推断
+    try {
+      return Utils.getTypeString(this.typeChecker, initializer);
+    } catch {
+      return undefined;
+    }
+  }
+  
+  /**
+   * 解析函数调用的符号
+   */
+  private resolveFunctionSymbol(callExpression: ts.CallExpression, sourceFile: ts.SourceFile): any {
+    const expression = callExpression.expression;
+    
+    // 处理直接函数调用：getDBStatus()
+    if (ts.isIdentifier(expression)) {
+      const functionName = expression.text;
+      return this.findSymbolByName(functionName, sourceFile.fileName);
+    }
+    
+    return undefined;
+  }
+  
+  /**
+   * 解析返回类型字符串
+   */
+  private parseReturnType(returnType: string): string | undefined {
+    // 处理函数签名的返回类型：() => ReturnType
+    const arrowMatch = returnType.match(/\)\s*=>\s*(.+)$/);
+    if (arrowMatch) {
+      const type = arrowMatch[1].trim();
+      // 处理对象类型：{ isConnected: boolean; ... }
+      if (type.startsWith('{') && type.endsWith('}')) {
+        return this.parseObjectType(type);
+      }
+      return type;
+    }
+    
+    return returnType;
+  }
+  
+  /**
+   * 解析对象类型字符串
+   */
+  private parseObjectType(objectType: string): string {
+    // 动态匹配已知的接口类型
+    const interfaceSymbols = this.symbols.filter(s => s.type === 'interface');
+    
+    for (const interfaceSymbol of interfaceSymbols) {
+      if (this.matchesInterface(objectType, interfaceSymbol as any)) {
+        return interfaceSymbol.name;
+      }
+    }
+    
+    return objectType;
+  }
+  
+  /**
+   * 检查对象类型是否匹配接口
+   */
+  private matchesInterface(objectType: string, interfaceSymbol: any): boolean {
+    const properties = interfaceSymbol.properties || [];
+    
+    // 检查是否包含接口的关键属性
+    let matchedProperties = 0;
+    let totalProperties = properties.length;
+    
+    if (totalProperties === 0) {
+      return false;
+    }
+    
+    for (const prop of properties) {
+      const propPattern = new RegExp(`${prop.name}\s*:\s*${this.escapeRegex(prop.propertyType || 'any')}`);
+      if (propPattern.test(objectType)) {
+        matchedProperties++;
+      }
+    }
+    
+    // 如果匹配了50%以上的属性，认为是匹配的
+    return matchedProperties >= Math.ceil(totalProperties * 0.5);
+  }
+  
+  /**
+   * 转义正则表达式特殊字符
+   */
+  private escapeRegex(str: string): string {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
   /**

@@ -166,4 +166,10 @@ export interface AnalysisOptions {
   includeTypeScript?: boolean;  // 是否包含TypeScript文件
   analyzeCallChains?: boolean;  // 是否分析调用链
   detectPatterns?: boolean;     // 是否检测设计模式
+  // 性能优化选项 - 基于Jelly的大规模项目处理
+  batchSize?: number;           // 批处理大小
+  enableParallelProcessing?: boolean; // 是否启用并行处理
+  maxMemoryUsage?: number;      // 最大内存使用量
+  continueOnError?: boolean;    // 遇到错误是否继续
+  enableCaching?: boolean;      // 是否启用缓存
 }

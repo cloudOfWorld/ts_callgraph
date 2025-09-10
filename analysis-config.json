@@ -1,0 +1,20 @@
+{
+  "patterns": [
+    "/Users/yangqiaokun/Huawei/autohome/autohome-common-lib/**/*.ts",
+    "/Users/yangqiaokun/Huawei/autohome/autohome-common-lib/**/*.js"
+  ],
+  "output": "enhanced-report.html",
+  "format": "html",
+  "excludePatterns": [
+    "node_modules/**",
+    "**/*.d.ts",
+    "**/dist/**",
+    "**/build/**"
+  ],
+  "options": {
+    "includeJavaScript": true,
+    "includeTypeScript": true,
+    "followImports": true,
+    "verbose": true
+  }
+}

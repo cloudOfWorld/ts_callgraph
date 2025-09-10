@@ -10,6 +10,7 @@
 
 import * as path from 'path';
 import { TypeScriptAnalyzer } from './analyzer';
+import { PerformanceOptimizer, OptimizationOptions } from './performance-optimizer';
 import { 
   AnalysisResult, 
   AnalysisOptions, 
@@ -25,6 +26,7 @@ import { Utils } from '../utils';
  */
 export class MultiLanguageAnalyzer {
   private options: AnalysisOptions;
+  private performanceOptimizer: PerformanceOptimizer;
 
   constructor(
     private rootPath: string,
@@ -38,10 +40,19 @@ export class MultiLanguageAnalyzer {
       detectPatterns: true,     // 检测设计模式
       ...options
     };
+    
+    // 初始化性能优化器
+    this.performanceOptimizer = new PerformanceOptimizer({
+      batchSize: this.options.batchSize || 50,
+      enableParallelProcessing: this.options.enableParallelProcessing !== false,
+      maxMemoryUsage: this.options.maxMemoryUsage || 1024 * 1024 * 1024, // 1GB
+      continueOnError: this.options.continueOnError || false
+    });
   }
 
   /**
    * 分析项目中的所有支持文件
+   * 使用性能优化策略处理大规模项目
    */
   async analyze(patterns: string[]): Promise<AnalysisResult> {
     console.log('开始多语言项目分析...');
@@ -54,9 +65,6 @@ export class MultiLanguageAnalyzer {
     
     console.log(`发现文件: TypeScript(${filesByLanguage.typescript.length}), JavaScript(${filesByLanguage.javascript.length})`);
 
-    // 创建统一的分析器实例
-    const analyzer = new TypeScriptAnalyzer(this.rootPath, this.options);
-    
     // 合并所有需要分析的文件
     const filesToAnalyze = [
       ...(this.options.includeTypeScript ? filesByLanguage.typescript : []),
@@ -67,9 +75,21 @@ export class MultiLanguageAnalyzer {
       console.warn('未找到可分析的文件');
       return this.createEmptyResult();
     }
-
-    // 执行分析
-    const result = await analyzer.analyze(filesToAnalyze);
+    
+    // 使用性能优化器执行分析
+    const result = await this.performanceOptimizer.optimizeAnalysis(
+      filesToAnalyze,
+      async (files) => {
+        const analyzer = new TypeScriptAnalyzer(this.rootPath, this.options);
+        return await analyzer.analyze(files);
+      },
+      {
+        batchSize: this.options.batchSize || 50,
+        enableParallelProcessing: filesToAnalyze.length > 100,
+        workerCount: Math.min(4, Math.ceil(filesToAnalyze.length / 50)),
+        continueOnError: this.options.continueOnError || false
+      }
+    );
 
     // 后处理：增强分析结果
     const enhancedResult = await this.enhanceAnalysisResult(result);
