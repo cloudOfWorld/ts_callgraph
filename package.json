@@ -18,7 +18,7 @@
   },
   "keywords": [
     "typescript",
-    "javascript", 
+    "javascript",
     "call-graph",
     "static-analysis",
     "ast",
@@ -34,19 +34,20 @@
   "author": "TypeScript CallGraph Analyzer",
   "license": "MIT",
   "dependencies": {
-    "typescript": "^5.0.0",
-    "commander": "^11.0.0",
     "chalk": "^4.1.2",
+    "commander": "^11.0.0",
     "glob": "^10.0.0",
-    "mermaid": "^10.0.0"
+    "language-detect": "^1.1.0",
+    "mermaid": "^10.0.0",
+    "typescript": "^5.0.0"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
     "@types/jest": "^29.0.0",
+    "@types/node": "^20.0.0",
     "jest": "^29.0.0",
+    "rimraf": "^5.0.0",
     "ts-jest": "^29.0.0",
-    "ts-node": "^10.0.0",
-    "rimraf": "^5.0.0"
+    "ts-node": "^10.0.0"
   },
   "engines": {
     "node": ">=16.0.0"
