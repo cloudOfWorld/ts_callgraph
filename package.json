@@ -1,7 +1,7 @@
 {
   "name": "ts-callgraph-analyzer",
   "version": "1.0.0",
-  "description": "A comprehensive TypeScript project analyzer that generates call graphs and dependency relationships",
+  "description": "A comprehensive TypeScript/JavaScript project analyzer with interactive D3.js visualizations, performance optimization, and enterprise-grade static analysis capabilities",
   "main": "dist/index.js",
   "bin": {
     "ts-callgraph": "./dist/cli.js"
@@ -18,10 +18,18 @@
   },
   "keywords": [
     "typescript",
+    "javascript", 
     "call-graph",
     "static-analysis",
     "ast",
-    "dependency-analysis"
+    "dependency-analysis",
+    "d3js",
+    "visualization",
+    "code-analysis",
+    "performance-optimization",
+    "multi-language",
+    "nodejs",
+    "enterprise"
   ],
   "author": "TypeScript CallGraph Analyzer",
   "license": "MIT",
