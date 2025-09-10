@@ -186,6 +186,26 @@ interface PatternDetectionResult {
 }
 ```
 
+#### 🔍 智能语言检测算法
+```typescript
+// 多策略综合语言检测
+interface LanguageDetectionResult {
+  language: 'typescript' | 'javascript' | 'unknown';
+  confidence: number;  // 0-1的置信度
+  method: 'extension' | 'content' | 'shebang' | 'fallback';
+  details?: string;
+}
+
+// 检测优先级：
+// 1. 文件扩展名 (.ts/.js) - 置信度 95%
+// 2. 特殊文件名 (package.json/tsconfig.json) - 置信度 90%
+// 3. Shebang (#!/usr/bin/env node) - 置信度 80%
+// 4. 文件内容模式匹配 - 置信度 30-90%
+//    - TypeScript: interface, type, enum, implements, etc.
+//    - JavaScript: module.exports, require(), var, etc.
+// 5. language-detect库辅助判断
+```
+
 ## 📊 数据流架构
 
 ### 分析流程图
